@@ -31,10 +31,12 @@
   .ghost{background:transparent; color:var(--muted); padding:8px 10px; font-weight:600; font-size:13px;}
   .setup-form{width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; text-align:left;}
   .setup-form label{font-size:13px; font-weight:700; color:var(--muted);}
-  .seg{display:flex; gap:8px;}
+.seg{display:flex; gap:8px;}
   .seg button{flex:1; padding:11px; background:#fff; border:1.5px solid var(--edge); color:var(--muted);}
+  /* 새로 추가하는 줄: 급수 버튼 5개가 예쁘게 들어가도록 안쪽 여백과 글자 크기 조정 */
+  #su-grade button { padding: 11px 2px; font-size: 13px; }
   .seg button.on{background:var(--court); border-color:var(--court); color:#fff;}
-
+  
   /* ── 헤더 ── */
   header{position:sticky; top:0; z-index:20; background:var(--court-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:10px;}
   header .brand{font-weight:800; font-size:17px; letter-spacing:-0.3px;}
@@ -139,13 +141,15 @@
   <div class="setup-form">
     <label>이름 (동호회에서 부르는 이름)</label>
     <input id="su-name" maxlength="10" placeholder="예: 홍길동">
+    <label>생년월일</label>
+    <input type="date" id="su-birth">
     <label>성별 (남복/여복/혼복 매칭에 사용)</label>
     <div class="seg" id="su-gender">
       <button data-v="M">남</button><button data-v="F">여</button>
     </div>
     <label>급수</label>
     <div class="seg" id="su-grade">
-      <button data-v="A">A조</button><button data-v="B">B조</button><button data-v="C">C조</button><button data-v="D">D조</button>
+      <button data-v="A">A조</button><button data-v="B">B조</button><button data-v="C">C조</button><button data-v="D">D조</button><button data-v="E">초심</button>
     </div>
     <button id="btn-setup" class="btn-primary" disabled>가입 신청</button>
   </div>
@@ -385,6 +389,7 @@ onAuthStateChanged(auth, async (u) => {
 });
 
 /* 프로필 설정 화면 */
+/* 프로필 설정 화면 */
 let suGender = "", suGrade = "";
 function segBind(id, set) {
   $(id).querySelectorAll("button").forEach(b => b.onclick = () => {
@@ -394,13 +399,30 @@ function segBind(id, set) {
 }
 segBind("#su-gender", v => suGender = v);
 segBind("#su-grade",  v => suGrade  = v);
+
 $("#su-name").oninput = checkSetup;
-function checkSetup() { $("#btn-setup").disabled = !($("#su-name").value.trim() && suGender && suGrade); }
+$("#su-birth").oninput = checkSetup; // 추가: 생년월일 입력 감지
+
+// 변경: 이름, 생년월일, 성별, 급수가 모두 입력되어야 버튼 활성화
+function checkSetup() { 
+  $("#btn-setup").disabled = !($("#su-name").value.trim() && $("#su-birth").value && suGender && suGrade); 
+}
+
 $("#btn-setup").onclick = async () => {
   $("#btn-setup").disabled = true;
   try {
     await setDoc(doc(db, "users", me.uid), {
-      name: $("#su-name").value.trim(), gender: suGender, grade: suGrade,
+      name: $("#su-name").value.trim(), 
+      birth: $("#su-birth").value, // 추가: 생년월일 데이터 저장
+      gender: suGender, 
+      grade: suGrade,
+      role: "pending", ratingPoint: 1000, tier: "silver",
+      totalWins: 0, totalLosses: 0, winStreak: 0, fcmTokens: [],
+      joinedAt: serverTimestamp(), lastActiveAt: serverTimestamp()
+    });
+    watchMyDoc();
+  } catch (e) { toast("가입 신청 실패: " + e.code); $("#btn-setup").disabled = false; }
+};
       role: "pending", ratingPoint: 1000, tier: "silver",
       totalWins: 0, totalLosses: 0, winStreak: 0, fcmTokens: [],
       joinedAt: serverTimestamp(), lastActiveAt: serverTimestamp()

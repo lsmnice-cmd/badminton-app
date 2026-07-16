@@ -423,14 +423,6 @@ $("#btn-setup").onclick = async () => {
     watchMyDoc();
   } catch (e) { toast("가입 신청 실패: " + e.code); $("#btn-setup").disabled = false; }
 };
-      role: "pending", ratingPoint: 1000, tier: "silver",
-      totalWins: 0, totalLosses: 0, winStreak: 0, fcmTokens: [],
-      joinedAt: serverTimestamp(), lastActiveAt: serverTimestamp()
-    });
-    watchMyDoc();
-  } catch (e) { toast("가입 신청 실패: " + e.code); $("#btn-setup").disabled = false; }
-};
-
 /* 내 문서 감시 — 승인되면 자동으로 앱 시작 */
 function watchMyDoc() {
   unsubs.push(onSnapshot(doc(db, "users", me.uid), (s) => {

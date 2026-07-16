@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>코트온 — 배드민턴 동호회</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root{
+    --paper:#EFF2EC; --ink:#17251F; --muted:#65746B;
+    --court:#0F6B52; --court-deep:#0A4A39; --line:#FFFFFF;
+    --card:#FFFFFF; --edge:#DCE3DB;
+    --accent:#F5B70A; --win:#1E7A46; --loss:#C0392B;
+    --scheduled:#F5B70A; --playing:#2E86DE;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif; background:var(--paper); color:var(--ink); font-size:15px;}
+  .wrap{max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  .hidden{display:none !important;}
+  button{font-family:inherit; border:none; cursor:pointer; border-radius:10px; font-weight:700;}
+  input,select{font-family:inherit; font-size:15px; padding:10px 12px; border:1.5px solid var(--edge); border-radius:10px; background:#fff; width:100%;}
+  .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum";}
+
+  /* ── 로그인/설정/대기 화면 ── */
+  .screen{max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px; padding:24px; text-align:center;}
+  .logo{font-size:44px;}
+  .screen h1{font-size:26px; font-weight:800; letter-spacing:-0.5px;}
+  .screen p{color:var(--muted); line-height:1.6;}
+  .btn-primary{background:var(--court); color:#fff; padding:14px 22px; font-size:16px; width:100%; max-width:320px;}
+  .btn-primary:disabled{opacity:.45;}
+  .ghost{background:transparent; color:var(--muted); padding:8px 10px; font-weight:600; font-size:13px;}
+  .setup-form{width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; text-align:left;}
+  .setup-form label{font-size:13px; font-weight:700; color:var(--muted);}
+  .seg{display:flex; gap:8px;}
+  .seg button{flex:1; padding:11px; background:#fff; border:1.5px solid var(--edge); color:var(--muted);}
+  .seg button.on{background:var(--court); border-color:var(--court); color:#fff;}
+
+  /* ── 헤더 ── */
+  header{position:sticky; top:0; z-index:20; background:var(--court-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:10px;}
+  header .brand{font-weight:800; font-size:17px; letter-spacing:-0.3px;}
+  header .spacer{flex:1;}
+  header .me{font-size:12px; text-align:right; line-height:1.4; opacity:.95;}
+  header .ghost{color:rgba(255,255,255,.8);}
+
+  /* ── 내 시합 배너 ── */
+  #my-banner{background:var(--accent); color:#3A2C00; padding:12px 16px; font-weight:800; text-align:center; animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.78}}
+
+  main{flex:1; padding:16px 14px 84px;}
+  .tab h2{font-size:15px; font-weight:800; margin:18px 0 10px; display:flex; align-items:center; gap:8px;}
+  .tab h2:first-child{margin-top:0;}
+  .tab h2 .cnt{font-size:12px; color:var(--muted); font-weight:600;}
+
+  /* ── 코트 카드(시그니처: 실제 코트 라인 형태) ── */
+  .courts{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .court{background:var(--court); border-radius:14px; padding:10px; color:#fff; border:2.5px solid var(--line); position:relative; min-height:150px; display:flex; flex-direction:column; box-shadow:0 2px 8px rgba(10,74,57,.25);}
+  .court.empty{background:#B9C7BC; border-color:#fff;}
+  .court .cno{position:absolute; top:-1px; left:-1px; background:var(--line); color:var(--court-deep); font-weight:800; font-size:12px; padding:3px 9px; border-radius:12px 0 10px 0;}
+  .court .status{position:absolute; top:6px; right:8px; font-size:11px; font-weight:800; padding:2px 8px; border-radius:20px;}
+  .status.s-scheduled{background:var(--scheduled); color:#3A2C00;}
+  .status.s-playing{background:var(--playing); color:#fff;}
+  .court .half{flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; font-weight:700; font-size:14px;}
+  .court .net{border-top:2px dashed rgba(255,255,255,.85); margin:2px 8px; position:relative;}
+  .court .net span{position:absolute; left:50%; top:-9px; transform:translateX(-50%); background:var(--court); font-size:10px; padding:0 6px; color:rgba(255,255,255,.9); font-weight:700;}
+  .court.empty .net span{background:#B9C7BC; color:#fff;}
+  .court .empty-label{flex:1; display:flex; justify-content:center; align-items:center; color:#fff; font-weight:800; opacity:.9;}
+
+  /* ── 카드/리스트 공통 ── */
+  .card{background:var(--card); border:1px solid var(--edge); border-radius:14px; padding:14px; margin-bottom:10px;}
+  .row{display:flex; align-items:center; gap:8px;}
+  .row .grow{flex:1;}
+  table{width:100%; border-collapse:collapse; background:#fff; border-radius:14px; overflow:hidden; border:1px solid var(--edge);}
+  th,td{padding:10px 8px; text-align:center; font-size:14px;}
+  th{background:var(--court-deep); color:#fff; font-size:12px; font-weight:700;}
+  tbody tr{border-top:1px solid var(--edge);}
+  tbody tr.me-row{background:#FFF7DF;}
+  td.l{text-align:left; padding-left:12px;}
+
+  .tier{display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:20px; color:#fff;}
+  .t-master{background:#7C3AED;} .t-dia{background:#2E86DE;} .t-plat{background:#16A085;}
+  .t-gold{background:#D4A017;} .t-silver{background:#8395A7;} .t-bronze{background:#A5673F;}
+  .streak{color:#E67E22; font-weight:800; font-size:12px;}
+  .delta-up{color:var(--win); font-weight:800;} .delta-dn{color:var(--loss); font-weight:800;}
+
+  /* ── 칩(출석/선수 선택) ── */
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{padding:9px 14px; border-radius:24px; background:#fff; border:1.5px solid var(--edge); font-weight:700; font-size:14px; color:var(--ink);}
+  .chip.on{background:var(--court); border-color:var(--court); color:#fff;}
+  .chip.pickA{background:#2E86DE; border-color:#2E86DE; color:#fff;}
+  .chip.pickB{background:#C0392B; border-color:#C0392B; color:#fff;}
+  .chip:disabled{opacity:.4;}
+  .teambox{display:flex; gap:10px; margin:10px 0;}
+  .teambox .tb{flex:1; border:1.5px dashed var(--edge); border-radius:12px; padding:10px; text-align:center; min-height:64px;}
+  .teambox .tb b{display:block; font-size:12px; color:var(--muted); margin-bottom:4px;}
+  .tb.a b{color:#2E86DE;} .tb.b b{color:#C0392B;}
+
+  .btn-line{background:#fff; border:1.5px solid var(--court); color:var(--court); padding:9px 14px; font-size:13px;}
+  .btn-warn{background:#fff; border:1.5px solid var(--loss); color:var(--loss); padding:9px 14px; font-size:13px;}
+  .btn-solid{background:var(--court); color:#fff; padding:11px 16px; font-size:14px;}
+  .btn-solid:disabled{opacity:.4;}
+  .btn-blue{background:var(--playing); color:#fff; padding:9px 14px; font-size:13px;}
+
+  /* ── 탭바 ── */
+  #tabbar{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:520px; background:#fff; border-top:1px solid var(--edge); display:flex; z-index:30; padding-bottom:env(safe-area-inset-bottom);}
+  #tabbar button{flex:1; background:none; padding:10px 0 8px; font-size:11px; color:var(--muted); font-weight:700; display:flex; flex-direction:column; gap:3px; align-items:center; border-radius:0;}
+  #tabbar button .ico{font-size:19px;}
+  #tabbar button.on{color:var(--court);}
+
+  /* ── 모달/토스트 ── */
+  #modal-root{position:fixed; inset:0; background:rgba(15,30,25,.55); z-index:50; display:flex; justify-content:center; align-items:center; padding:20px;}
+  .modal{background:#fff; border-radius:16px; padding:20px; width:100%; max-width:380px;}
+  .modal h3{font-size:17px; font-weight:800; margin-bottom:12px;}
+  .modal .actions{display:flex; gap:8px; margin-top:16px;}
+  .modal .actions button{flex:1; padding:12px;}
+  .score-in{display:flex; align-items:center; gap:10px; margin:10px 0;}
+  .score-in input{text-align:center; font-size:22px; font-weight:800; padding:12px;}
+  #toast{position:fixed; bottom:76px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:24px; font-size:13px; font-weight:700; z-index:60; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90%;}
+  #toast.show{opacity:1;}
+  .hint{font-size:12px; color:var(--muted); line-height:1.6; margin-top:6px;}
+  .empty-msg{color:var(--muted); text-align:center; padding:22px 0; font-size:14px;}
+  details.opp{margin-top:0;}
+  .opp-lines{padding:8px 12px; background:#F6F8F5; font-size:13px; text-align:left; line-height:1.9;}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="screen-login" class="screen">
+  <div class="logo">🏸</div>
+  <h1>코트온</h1>
+  <p>우리 동호회 시합 매칭 · 전적 기록</p>
+  <button id="btn-login" class="btn-primary">Google로 시작하기</button>
+</div>
+
+<!-- 최초 프로필 설정 -->
+<div id="screen-setup" class="screen hidden">
+  <div class="logo">🏸</div>
+  <h1>프로필 만들기</h1>
+  <div class="setup-form">
+    <label>이름 (동호회에서 부르는 이름)</label>
+    <input id="su-name" maxlength="10" placeholder="예: 홍길동">
+    <label>성별 (남복/여복/혼복 매칭에 사용)</label>
+    <div class="seg" id="su-gender">
+      <button data-v="M">남</button><button data-v="F">여</button>
+    </div>
+    <label>급수</label>
+    <div class="seg" id="su-grade">
+      <button data-v="A">A조</button><button data-v="B">B조</button><button data-v="C">C조</button><button data-v="D">D조</button>
+    </div>
+    <button id="btn-setup" class="btn-primary" disabled>가입 신청</button>
+  </div>
+</div>
+
+<!-- 승인 대기 -->
+<div id="screen-pending" class="screen hidden">
+  <div class="logo">⏳</div>
+  <h1>승인 대기 중</h1>
+  <p>임원이 가입을 승인하면<br>자동으로 화면이 열립니다.</p>
+  <button id="btn-logout-pending" class="ghost">다른 계정으로 로그인</button>
+</div>
+
+<!-- 메인 앱 -->
+<div id="app" class="wrap hidden">
+  <header>
+    <div class="brand">🏸 코트온</div>
+    <div class="spacer"></div>
+    <button id="btn-noti" class="ghost hidden">🔔 알림 켜기</button>
+    <div class="me" id="me-chip"></div>
+    <button id="btn-logout" class="ghost">나가기</button>
+  </header>
+  <div id="my-banner" class="hidden"></div>
+  <main>
+    <!-- 코트 현황 -->
+    <section id="tab-courts" class="tab">
+      <h2>코트 현황 <span class="cnt" id="court-cnt"></span></h2>
+      <div class="courts" id="court-board"></div>
+      <p class="hint">매칭이 등록되면 당사자 화면에 자동으로 알림이 뜹니다. 상단의 「🔔 알림 켜기」를 누르면 다른 화면을 보다가도 알림을 받습니다.</p>
+    </section>
+
+    <!-- 랭킹 -->
+    <section id="tab-ranking" class="tab hidden">
+      <h2>랭킹</h2>
+      <div id="ranking-area"></div>
+    </section>
+
+    <!-- 일별 기록 -->
+    <section id="tab-daily" class="tab hidden">
+      <h2>일별 기록</h2>
+      <div class="row" style="margin-bottom:10px;">
+        <input type="date" id="daily-date" style="flex:1;">
+        <button class="btn-solid" id="btn-daily">조회</button>
+      </div>
+      <div id="daily-area"><p class="empty-msg">날짜를 선택하고 조회를 누르세요.</p></div>
+      <p class="hint">이름을 누르면 그날 상대별 결과가 펼쳐집니다.</p>
+    </section>
+
+    <!-- 상대 전적 -->
+    <section id="tab-h2h" class="tab hidden">
+      <h2>상대 전적</h2>
+      <div class="row" style="margin-bottom:10px;">
+        <select id="h2h-a"><option value="">선수 1</option></select>
+        <span style="font-weight:800;">VS</span>
+        <select id="h2h-b"><option value="">선수 2</option></select>
+      </div>
+      <div id="h2h-area"><p class="empty-msg">두 선수를 선택하세요.</p></div>
+    </section>
+
+    <!-- 관리자 -->
+    <section id="tab-admin" class="tab hidden">
+      <h2>① 오늘 출석 <span class="cnt" id="attend-cnt"></span></h2>
+      <div class="card"><div class="chips" id="attend-chips"></div>
+        <p class="hint">이름을 눌러 출석/취소. 출석자만 매칭 후보에 나타납니다.</p></div>
+
+      <h2>② 매칭 만들기</h2>
+      <div class="card">
+        <div class="chips" id="pick-chips"></div>
+        <div class="teambox">
+          <div class="tb a"><b>A팀 (1·2번째 선택)</b><span id="teamA-names">—</span></div>
+          <div class="tb b"><b>B팀 (3·4번째 선택)</b><span id="teamB-names">—</span></div>
+        </div>
+        <div class="row">
+          <span id="match-type" style="font-weight:800; min-width:56px;">—</span>
+          <select id="court-sel" style="flex:1;"><option value="">코트 선택</option></select>
+          <button class="btn-solid" id="btn-make" disabled>매칭 등록</button>
+        </div>
+        <p class="hint">경기 중이거나 시합 예정인 회원은 목록에서 자동으로 빠집니다.</p>
+      </div>
+
+      <h2>③ 예정 · 진행 중 경기</h2>
+      <div id="admin-active"><p class="empty-msg">진행 중인 경기가 없습니다.</p></div>
+
+      <h2>④ 오늘 완료된 경기 <button class="ghost" id="btn-reload-done">새로고침</button></h2>
+      <div id="admin-done"><p class="empty-msg">아직 없습니다.</p></div>
+
+      <h2>⑤ 회원 관리</h2>
+      <div id="admin-members"></div>
+    </section>
+  </main>
+
+  <nav id="tabbar">
+    <button data-tab="courts" class="on"><span class="ico">🏟️</span>코트</button>
+    <button data-tab="ranking"><span class="ico">🏆</span>랭킹</button>
+    <button data-tab="daily"><span class="ico">📅</span>일별기록</button>
+    <button data-tab="h2h"><span class="ico">⚔️</span>상대전적</button>
+    <button data-tab="admin" id="tabbtn-admin" class="hidden"><span class="ico">🛠️</span>운영</button>
+  </nav>
+</div>
+
+<div id="modal-root" class="hidden"></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy,
+  onSnapshot, getDocs, writeBatch, runTransaction, serverTimestamp, increment, arrayUnion, arrayRemove }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ═══════════════════════════════════════════════════════════
+   ★ 1단계: Firebase 콘솔에서 복사한 설정을 아래에 붙여넣으세요.
+   (설치 가이드 3번 단계 참고)
+   ═══════════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBiPPMAvNK4lVSfLk708NZacsJXm4KHE2A",
+  authDomain: "badminton-app-8d899.firebaseapp.com",
+  projectId: "badminton-app-8d899",
+  storageBucket: "badminton-app-8d899.firebasestorage.app",
+  messagingSenderId: "313539970831",
+  appId: "1:313539970831:web:b704ffa85bba8b3039a07a"
+};
+/* ═══════════════════════════════════════════════════════════ */
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+/* ── 유틸 ── */
+const $  = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate = (d = new Date()) => {
+  const t = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return t.toISOString().slice(0, 10);
+};
+const pairKey = (a, b) => [a, b].sort().join("_");
+const TYPE_LABEL = { MD: "남복", WD: "여복", XD: "혼복", ETC: "복식" };
+const TIERS = [
+  { min: 1300, key: "master", name: "마스터", cls: "t-master" },
+  { min: 1200, key: "dia",    name: "다이아", cls: "t-dia" },
+  { min: 1100, key: "plat",   name: "플래티넘", cls: "t-plat" },
+  { min: 1050, key: "gold",   name: "골드", cls: "t-gold" },
+  { min:  950, key: "silver", name: "실버", cls: "t-silver" },
+  { min: -9999, key: "bronze", name: "브론즈", cls: "t-bronze" },
+];
+const tierOf = p => TIERS.find(t => (p ?? 1000) >= t.min);
+const tierChip = p => { const t = tierOf(p); return `<span class="tier ${t.cls}">${t.name}</span>`; };
+const K_FACTOR = 32;
+
+function calcDeltas(teamA, teamB, winner) {
+  const avgA = (teamA[0].rating + teamA[1].rating) / 2;
+  const avgB = (teamB[0].rating + teamB[1].rating) / 2;
+  const expA = 1 / (1 + Math.pow(10, (avgB - avgA) / 400));
+  const dA = Math.round(K_FACTOR * ((winner === "A" ? 1 : 0) - expA)) || (winner === "A" ? 1 : -1);
+  const deltas = {};
+  teamA.forEach(p => deltas[p.uid] = dA);
+  teamB.forEach(p => deltas[p.uid] = -dA);
+  return deltas;
+}
+function typeOf(uids) {
+  const g = uids.map(u => users[u]?.gender);
+  const m = g.filter(x => x === "M").length, f = g.filter(x => x === "F").length;
+  if (m === 4) return "MD"; if (f === 4) return "WD"; if (m === 2 && f === 2) return "XD";
+  return "ETC";
+}
+
+/* ── 전역 상태 ── */
+let me = null, myProfile = null, appStarted = false;
+let users = {};            // uid → 회원 데이터
+let activeMatches = [];    // scheduled + playing
+let attendToday = [];      // 오늘 출석 uid
+let unsubs = [];
+let firstMatchSnap = true;
+let pick = [];             // 매칭 선택 (순서 유지, 최대 4)
+
+/* ── 사운드/토스트 ── */
+let audioCtx = null;
+document.addEventListener("click", () => {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+}, { once: true });
+function beep() {
+  if (!audioCtx) return;
+  try {
+    [0, 0.25, 0.5].forEach(t => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.frequency.value = 880; g.gain.setValueAtTime(0.25, audioCtx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + 0.18);
+      o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + 0.2);
+    });
+  } catch (e) {}
+}
+let toastTimer = null;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ── 화면 전환 ── */
+function show(id) {
+  ["screen-login", "screen-setup", "screen-pending", "app"].forEach(x =>
+    document.getElementById(x).classList.toggle("hidden", x !== id));
+}
+function cleanup() { unsubs.forEach(u => u()); unsubs = []; appStarted = false; firstMatchSnap = true; }
+
+/* ── 설정 미완료 안내 ── */
+if (firebaseConfig.apiKey.includes("여기에")) {
+  document.body.innerHTML = `<div class="screen"><div class="logo">⚙️</div><h1>설정이 필요합니다</h1>
+  <p>index.html 파일을 열어 <b>firebaseConfig</b> 부분에<br>Firebase 콘솔의 설정값을 붙여넣어 주세요.<br>(설치 가이드 3번 단계)</p></div>`;
+  throw new Error("firebaseConfig 미설정");
+}
+
+/* ── 인증 ── */
+$("#btn-login").onclick = async () => {
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) {
+    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")
+      await signInWithRedirect(auth, new GoogleAuthProvider());
+    else toast("로그인 실패: " + e.code);
+  }
+};
+$("#btn-logout").onclick = () => signOut(auth);
+$("#btn-logout-pending").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async (u) => {
+  cleanup(); me = u; myProfile = null;
+  if (!u) { show("screen-login"); return; }
+  const snap = await getDoc(doc(db, "users", u.uid));
+  if (!snap.exists()) {
+    $("#su-name").value = (u.displayName || "").slice(0, 10);
+    show("screen-setup");
+    return;
+  }
+  watchMyDoc();
+});
+
+/* 프로필 설정 화면 */
+let suGender = "", suGrade = "";
+function segBind(id, set) {
+  $(id).querySelectorAll("button").forEach(b => b.onclick = () => {
+    $(id).querySelectorAll("button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on"); set(b.dataset.v); checkSetup();
+  });
+}
+segBind("#su-gender", v => suGender = v);
+segBind("#su-grade",  v => suGrade  = v);
+$("#su-name").oninput = checkSetup;
+function checkSetup() { $("#btn-setup").disabled = !($("#su-name").value.trim() && suGender && suGrade); }
+$("#btn-setup").onclick = async () => {
+  $("#btn-setup").disabled = true;
+  try {
+    await setDoc(doc(db, "users", me.uid), {
+      name: $("#su-name").value.trim(), gender: suGender, grade: suGrade,
+      role: "pending", ratingPoint: 1000, tier: "silver",
+      totalWins: 0, totalLosses: 0, winStreak: 0, fcmTokens: [],
+      joinedAt: serverTimestamp(), lastActiveAt: serverTimestamp()
+    });
+    watchMyDoc();
+  } catch (e) { toast("가입 신청 실패: " + e.code); $("#btn-setup").disabled = false; }
+};
+
+/* 내 문서 감시 — 승인되면 자동으로 앱 시작 */
+function watchMyDoc() {
+  unsubs.push(onSnapshot(doc(db, "users", me.uid), (s) => {
+    if (!s.exists()) return;
+    myProfile = { id: s.id, ...s.data() };
+    if (myProfile.role === "pending") { show("screen-pending"); return; }
+    if (["member", "admin"].includes(myProfile.role)) {
+      if (!appStarted) startApp();
+      renderHeader();
+    }
+  }, (e) => console.error(e)));
+}
+
+/* ── 앱 시작: 실시간 리스너 3종 ── */
+function startApp() {
+  appStarted = true;
+  show("app");
+  $("#daily-date").value = fmtDate();
+  $("#tabbtn-admin").classList.toggle("hidden", myProfile.role !== "admin");
+  if ("Notification" in window && Notification.permission === "default") $("#btn-noti").classList.remove("hidden");
+
+  // ① 전체 회원 (랭킹·이름표·관리 화면의 원천)
+  unsubs.push(onSnapshot(query(collection(db, "users"), orderBy("ratingPoint", "desc")), (qs) => {
+    users = {}; qs.forEach(d => users[d.id] = { id: d.id, ...d.data() });
+    renderRanking(); renderH2HSelects(); renderAttendance(); renderPick(); renderMembers();
+  }, (e) => console.error("users:", e)));
+
+  // ② 예정+진행 경기 (코트 현황·알림·운영 화면의 원천)
+  unsubs.push(onSnapshot(query(collection(db, "matches"), where("status", "in", ["scheduled", "playing"])), (qs) => {
+    qs.docChanges().forEach(c => {
+      if (!firstMatchSnap && c.type === "added") {
+        const m = c.doc.data();
+        if (m.status === "scheduled" && m.players.includes(me.uid)) notifyMyMatch(m);
+      }
+    });
+    activeMatches = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    firstMatchSnap = false;
+    renderCourts(); renderBanner(); renderActive(); renderPick();
+  }, (e) => console.error("matches:", e)));
+
+  // ③ 오늘 출석
+  unsubs.push(onSnapshot(doc(db, "attendance", fmtDate()), (s) => {
+    attendToday = s.exists() ? (s.data().uids || []) : [];
+    renderAttendance(); renderPick();
+  }, (e) => console.error("attendance:", e)));
+}
+
+const uname = uid => users[uid]?.name || "?";
+
+function renderHeader() {
+  $("#me-chip").innerHTML =
+    `<b>${esc(myProfile.name)}</b> ${tierChip(myProfile.ratingPoint)}<br><span class="num">${myProfile.ratingPoint}점 · ${myProfile.totalWins}승 ${myProfile.totalLosses}패</span>`;
+}
+
+/* ── 알림 ── */
+$("#btn-noti").onclick = async () => {
+  const p = await Notification.requestPermission();
+  if (p === "granted") { $("#btn-noti").classList.add("hidden"); toast("알림이 켜졌습니다."); }
+};
+function notifyMyMatch(m) {
+  beep();
+  navigator.vibrate?.([250, 120, 250]);
+  toast(`🏸 ${m.courtNo}번 코트 시합 예정!`);
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification("🏸 시합 예정", {
+        body: `${m.courtNo}번 코트 · ${TYPE_LABEL[m.type]}\n${m.teamA.map(uname).join("·")} vs ${m.teamB.map(uname).join("·")}`
+      });
+    } catch (e) {}
+  }
+}
+function renderBanner() {
+  const mine = activeMatches.find(m => m.players.includes(me.uid));
+  const b = $("#my-banner");
+  if (!mine) { b.classList.add("hidden"); return; }
+  b.classList.remove("hidden");
+  b.textContent = mine.status === "scheduled"
+    ? `🏸 시합 예정! ${mine.courtNo}번 코트로 이동하세요 (${TYPE_LABEL[mine.type]})`
+    : `🎯 ${mine.courtNo}번 코트에서 경기 중`;
+}
+
+/* ── 코트 현황 ── */
+function renderCourts() {
+  const board = $("#court-board");
+  let html = "";
+  for (let n = 1; n <= 4; n++) {
+    const m = activeMatches.find(x => x.courtNo === n);
+    if (!m) {
+      html += `<div class="court empty"><span class="cno">${n}코트</span>
+        <div class="empty-label">빈 코트</div></div>`;
+    } else {
+      const st = m.status === "scheduled" ? `<span class="status s-scheduled">예정</span>` : `<span class="status s-playing">경기중</span>`;
+      html += `<div class="court"><span class="cno">${n}코트</span>${st}
+        <div class="half">${m.teamA.map(u => esc(uname(u))).join("<br>")}</div>
+        <div class="net"><span>${TYPE_LABEL[m.type]}</span></div>
+        <div class="half">${m.teamB.map(u => esc(uname(u))).join("<br>")}</div></div>`;
+    }
+  }
+  board.innerHTML = html;
+  $("#court-cnt").textContent = `${activeMatches.length}경기 진행/예정`;
+}
+
+/* ── 랭킹 ── */
+function renderRanking() {
+  const list = Object.values(users).filter(u => ["member", "admin"].includes(u.role));
+  list.sort((a, b) => (b.ratingPoint ?? 0) - (a.ratingPoint ?? 0));
+  if (!list.length) { $("#ranking-area").innerHTML = `<p class="empty-msg">회원이 없습니다.</p>`; return; }
+  let rows = list.map((u, i) => {
+    const g = (u.totalWins || 0) + (u.totalLosses || 0);
+    const wr = g ? Math.round(u.totalWins / g * 100) : 0;
+    const streak = (u.winStreak || 0) >= 3 ? ` <span class="streak">🔥${u.winStreak}</span>` : "";
+    return `<tr class="${u.id === me.uid ? "me-row" : ""}">
+      <td class="num">${i + 1}</td>
+      <td class="l">${tierChip(u.ratingPoint)} ${esc(u.name)}${streak}</td>
+      <td class="num"><b>${u.ratingPoint ?? 1000}</b></td>
+      <td class="num">${u.totalWins || 0}승 ${u.totalLosses || 0}패</td>
+      <td class="num">${wr}%</td></tr>`;
+  }).join("");
+  $("#ranking-area").innerHTML =
+    `<table><thead><tr><th>순위</th><th style="text-align:left;">회원</th><th>포인트</th><th>전적</th><th>승률</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ── 일별 기록 (스포넷식) ── */
+$("#btn-daily").onclick = loadDaily;
+async function loadDaily() {
+  const d = $("#daily-date").value; if (!d) return;
+  $("#daily-area").innerHTML = `<p class="empty-msg">불러오는 중…</p>`;
+  try {
+    const qs = await getDocs(query(collection(db, "matches"), where("date", "==", d)));
+    const done = qs.docs.map(x => x.data()).filter(m => m.status === "finished");
+    if (!done.length) { $("#daily-area").innerHTML = `<p class="empty-msg">이 날짜에 완료된 경기가 없습니다.</p>`; return; }
+    // 회원별 집계 { games, wins, losses, opp: { uid: {g,w,l} } }
+    const agg = {};
+    const bump = (uid, won, opps) => {
+      agg[uid] ??= { games: 0, wins: 0, losses: 0, opp: {} };
+      agg[uid].games++; won ? agg[uid].wins++ : agg[uid].losses++;
+      opps.forEach(o => {
+        agg[uid].opp[o] ??= { g: 0, w: 0, l: 0 };
+        agg[uid].opp[o].g++; won ? agg[uid].opp[o].w++ : agg[uid].opp[o].l++;
+      });
+    };
+    done.forEach(m => {
+      const aWon = m.winnerTeam === "A";
+      m.teamA.forEach(u => bump(u, aWon, m.teamB));
+      m.teamB.forEach(u => bump(u, !aWon, m.teamA));
+    });
+    const rows = Object.entries(agg)
+      .sort((x, y) => y[1].games - x[1].games || y[1].wins - x[1].wins)
+      .map(([uid, a]) => {
+        const wr = Math.round(a.wins / a.games * 100);
+        const oppLines = Object.entries(a.opp)
+          .sort((x, y) => y[1].g - x[1].g)
+          .map(([o, s]) => `vs ${esc(uname(o))} — ${s.g}전 ${s.w}승 ${s.l}패`).join("<br>");
+        return `<tr><td colspan="5" style="padding:0;"><details class="opp">
+          <summary style="display:flex; padding:10px 12px; cursor:pointer; align-items:center;">
+            <span style="flex:1; text-align:left; font-weight:700;">${esc(uname(uid))}</span>
+            <span class="num" style="width:52px;">${a.games}경기</span>
+            <span class="num" style="width:76px;">${a.wins}승 ${a.losses}패</span>
+            <span class="num" style="width:46px;">${wr}%</span></summary>
+          <div class="opp-lines">${oppLines}</div></details></td></tr>`;
+      }).join("");
+    $("#daily-area").innerHTML =
+      `<p class="hint" style="margin-bottom:8px;">${d} · 총 ${done.length}경기</p>
+       <table><thead><tr><th style="text-align:left; padding-left:12px;">회원</th><th>경기</th><th>승패</th><th>승률</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch (e) { console.error(e); $("#daily-area").innerHTML = `<p class="empty-msg">조회 실패: ${e.code || e}</p>`; }
+}
+
+/* ── 상대 전적 ── */
+function renderH2HSelects() {
+  const members = Object.values(users).filter(u => ["member", "admin"].includes(u.role))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  ["#h2h-a", "#h2h-b"].forEach(sel => {
+    const el = $(sel), cur = el.value;
+    el.innerHTML = `<option value="">선수 선택</option>` +
+      members.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join("");
+    el.value = cur;
+  });
+}
+$("#h2h-a").onchange = loadH2H; $("#h2h-b").onchange = loadH2H;
+async function loadH2H() {
+  const a = $("#h2h-a").value, b = $("#h2h-b").value;
+  if (!a || !b || a === b) { $("#h2h-area").innerHTML = `<p class="empty-msg">서로 다른 두 선수를 선택하세요.</p>`; return; }
+  $("#h2h-area").innerHTML = `<p class="empty-msg">불러오는 중…</p>`;
+  try {
+    const key = pairKey(a, b);
+    const rec = await getDoc(doc(db, "records", key));
+    let winsA = 0, winsB = 0, total = 0;
+    if (rec.exists()) {
+      const r = rec.data();
+      total = r.totalGames;
+      winsA = (r.uidLow === a) ? r.winsLow : r.winsHigh;
+      winsB = (r.uidLow === b) ? r.winsLow : r.winsHigh;
+    }
+    // 최근 맞대결 (상대팀으로 만난 경기)
+    const qs = await getDocs(query(collection(db, "matches"), where("pairKeys", "array-contains", key)));
+    const games = qs.docs.map(x => x.data()).filter(m => m.status === "finished")
+      .sort((x, y) => (y.date || "").localeCompare(x.date || "")).slice(0, 8);
+    const list = games.map(m => {
+      const aInA = m.teamA.includes(a);
+      const aWon = (m.winnerTeam === "A") === aInA;
+      const myTeam = aInA ? m.teamA : m.teamB, opTeam = aInA ? m.teamB : m.teamA;
+      const sc = aInA ? `${m.scoreA}:${m.scoreB}` : `${m.scoreB}:${m.scoreA}`;
+      return `<div class="row" style="padding:7px 0; border-top:1px solid var(--edge); font-size:13px;">
+        <span class="grow">${m.date?.slice(5) || ""} · ${TYPE_LABEL[m.type]} · ${myTeam.map(uname).map(esc).join("·")} vs ${opTeam.map(uname).map(esc).join("·")}</span>
+        <b class="num" style="color:${aWon ? "var(--win)" : "var(--loss)"};">${sc} ${aWon ? "승" : "패"}</b></div>`;
+    }).join("");
+    $("#h2h-area").innerHTML = `<div class="card" style="text-align:center;">
+      <div style="font-size:13px; color:var(--muted); margin-bottom:6px;">상대로 만난 ${total}경기</div>
+      <div style="font-size:22px; font-weight:800;" class="num">
+        ${esc(uname(a))} <span style="color:var(--court);">${winsA}</span> : <span style="color:var(--loss);">${winsB}</span> ${esc(uname(b))}</div>
+      ${list ? `<div style="margin-top:12px; text-align:left;"><b style="font-size:13px;">최근 맞대결 (${esc(uname(a))} 기준)</b>${list}</div>` : ""}
+    </div>`;
+  } catch (e) { console.error(e); $("#h2h-area").innerHTML = `<p class="empty-msg">조회 실패: ${e.code || e}</p>`; }
+}
+
+/* ══════════════ 관리자 기능 ══════════════ */
+const isAdmin = () => myProfile?.role === "admin";
+const busyUids = () => new Set(activeMatches.flatMap(m => m.players));
+
+/* ① 출석 */
+function renderAttendance() {
+  if (!isAdmin()) return;
+  const members = Object.values(users).filter(u => ["member", "admin"].includes(u.role))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  $("#attend-chips").innerHTML = members.map(u =>
+    `<button class="chip ${attendToday.includes(u.id) ? "on" : ""}" data-uid="${u.id}">${esc(u.name)}</button>`).join("");
+  $("#attend-cnt").textContent = `${attendToday.length}명`;
+  $("#attend-chips").querySelectorAll(".chip").forEach(b => b.onclick = async () => {
+    const uid = b.dataset.uid, on = attendToday.includes(uid);
+    try {
+      await setDoc(doc(db, "attendance", fmtDate()),
+        { date: fmtDate(), uids: on ? arrayRemove(uid) : arrayUnion(uid), updatedAt: serverTimestamp() }, { merge: true });
+    } catch (e) { toast("실패: " + e.code); }
+  });
+}
+
+/* ② 매칭 만들기 */
+function renderPick() {
+  if (!isAdmin()) return;
+  const busy = busyUids();
+  pick = pick.filter(u => attendToday.includes(u) && !busy.has(u));
+  const avail = attendToday.filter(u => users[u] && !busy.has(u))
+    .sort((a, b) => uname(a).localeCompare(uname(b), "ko"));
+  $("#pick-chips").innerHTML = avail.length ? avail.map(u => {
+    const i = pick.indexOf(u);
+    const cls = i < 0 ? "" : (i < 2 ? "pickA" : "pickB");
+    return `<button class="chip ${cls}" data-uid="${u}">${esc(uname(u))} <small>${users[u].grade || ""}</small></button>`;
+  }).join("") : `<p class="empty-msg" style="padding:6px 0; width:100%;">매칭 가능한 출석자가 없습니다.</p>`;
+  $("#pick-chips").querySelectorAll(".chip").forEach(b => b.onclick = () => {
+    const uid = b.dataset.uid, i = pick.indexOf(uid);
+    if (i >= 0) pick.splice(i, 1);
+    else { if (pick.length >= 4) { toast("이미 4명을 선택했습니다."); return; } pick.push(uid); }
+    renderPick();
+  });
+  $("#teamA-names").textContent = pick.slice(0, 2).map(uname).join(" · ") || "—";
+  $("#teamB-names").textContent = pick.slice(2, 4).map(uname).join(" · ") || "—";
+  $("#match-type").textContent = pick.length === 4 ? TYPE_LABEL[typeOf(pick)] : "—";
+  const usedCourts = new Set(activeMatches.map(m => m.courtNo));
+  const sel = $("#court-sel"), cur = sel.value;
+  sel.innerHTML = `<option value="">코트 선택</option>` + [1, 2, 3, 4].map(n =>
+    `<option value="${n}" ${usedCourts.has(n) ? "disabled" : ""}>${n}코트${usedCourts.has(n) ? " (사용중)" : ""}</option>`).join("");
+  if (cur && !usedCourts.has(+cur)) sel.value = cur;
+  $("#btn-make").disabled = !(pick.length === 4 && sel.value);
+}
+$("#court-sel").onchange = () => { $("#btn-make").disabled = !(pick.length === 4 && $("#court-sel").value); };
+$("#btn-make").onclick = async () => {
+  if (pick.length !== 4 || !$("#court-sel").value) return;
+  $("#btn-make").disabled = true;
+  const courtNo = +$("#court-sel").value;
+  const teamA = pick.slice(0, 2), teamB = pick.slice(2, 4);
+  const pairKeys = []; teamA.forEach(a => teamB.forEach(b => pairKeys.push(pairKey(a, b))));
+  try {
+    const batch = writeBatch(db);
+    const mRef = doc(collection(db, "matches"));
+    batch.set(mRef, {
+      date: fmtDate(), type: typeOf(pick), courtNo, teamA, teamB,
+      players: [...pick], pairKeys, status: "scheduled",
+      scoreA: null, scoreB: null, winnerTeam: null,
+      createdBy: me.uid, createdAt: serverTimestamp()
+    });
+    batch.set(doc(db, "courts", "court" + courtNo),
+      { courtNo, status: "playing", currentMatchId: mRef.id, updatedAt: serverTimestamp() });
+    await batch.commit();
+    pick = []; $("#court-sel").value = "";
+    toast(`${courtNo}코트 매칭 등록 — 당사자에게 알림 발송됨`);
+  } catch (e) { toast("등록 실패: " + e.code); }
+  renderPick();
+};
+
+/* ③ 예정·진행 경기 */
+function renderActive() {
+  if (!isAdmin()) return;
+  const area = $("#admin-active");
+  if (!activeMatches.length) { area.innerHTML = `<p class="empty-msg">진행 중인 경기가 없습니다.</p>`; return; }
+  area.innerHTML = activeMatches.slice().sort((a, b) => a.courtNo - b.courtNo).map(m => `
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;">
+        <b class="grow">${m.courtNo}코트 · ${TYPE_LABEL[m.type]}</b>
+        <span class="status ${m.status === "scheduled" ? "s-scheduled" : "s-playing"}" style="position:static;">${m.status === "scheduled" ? "예정" : "경기중"}</span>
+      </div>
+      <div style="font-size:14px; margin-bottom:10px;">
+        <span style="color:#2E86DE; font-weight:800;">A</span> ${m.teamA.map(uname).map(esc).join(" · ")}
+        &nbsp;vs&nbsp;
+        <span style="color:#C0392B; font-weight:800;">B</span> ${m.teamB.map(uname).map(esc).join(" · ")}
+      </div>
+      <div class="row">
+        ${m.status === "scheduled" ? `<button class="btn-blue" data-act="start" data-id="${m.id}">경기 시작</button>` : ""}
+        <button class="btn-line" data-act="result" data-id="${m.id}">결과 입력</button>
+        <button class="btn-warn" data-act="cancel" data-id="${m.id}">취소</button>
+      </div>
+    </div>`).join("");
+  area.querySelectorAll("button").forEach(b => b.onclick = () => {
+    const m = activeMatches.find(x => x.id === b.dataset.id); if (!m) return;
+    if (b.dataset.act === "start") updateDoc(doc(db, "matches", m.id), { status: "playing", startedAt: serverTimestamp() }).catch(e => toast(e.code));
+    if (b.dataset.act === "result") openResultModal(m);
+    if (b.dataset.act === "cancel") cancelMatch(m);
+  });
+}
+async function cancelMatch(m) {
+  if (!confirm(`${m.courtNo}코트 경기를 취소할까요?`)) return;
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, "matches", m.id), { status: "canceled", finishedAt: serverTimestamp() });
+    batch.set(doc(db, "courts", "court" + m.courtNo),
+      { courtNo: m.courtNo, status: "empty", currentMatchId: null, updatedAt: serverTimestamp() });
+    await batch.commit();
+    toast("경기를 취소했습니다.");
+  } catch (e) { toast("취소 실패: " + e.code); }
+}
+
+/* 결과 입력 모달 + 트랜잭션 */
+function openResultModal(m) {
+  const root = $("#modal-root");
+  root.classList.remove("hidden");
+  root.innerHTML = `<div class="modal">
+    <h3>${m.courtNo}코트 결과 입력</h3>
+    <div class="score-in">
+      <div style="flex:1; text-align:center;"><b style="color:#2E86DE;">A팀</b><br><small>${m.teamA.map(uname).map(esc).join("·")}</small>
+        <input type="number" id="sc-a" min="0" max="99" inputmode="numeric" placeholder="21"></div>
+      <b>:</b>
+      <div style="flex:1; text-align:center;"><b style="color:#C0392B;">B팀</b><br><small>${m.teamB.map(uname).map(esc).join("·")}</small>
+        <input type="number" id="sc-b" min="0" max="99" inputmode="numeric" placeholder="18"></div>
+    </div>
+    <p class="hint">저장하면 4명의 승패·포인트·상대전적이 즉시 반영됩니다.</p>
+    <div class="actions">
+      <button class="btn-warn" id="md-close">닫기</button>
+      <button class="btn-solid" id="md-save">저장</button>
+    </div></div>`;
+  $("#md-close").onclick = () => { root.classList.add("hidden"); root.innerHTML = ""; };
+  $("#md-save").onclick = async () => {
+    const a = parseInt($("#sc-a").value), b = parseInt($("#sc-b").value);
+    if (isNaN(a) || isNaN(b) || a === b) { toast("점수를 확인하세요. (동점 불가)"); return; }
+    $("#md-save").disabled = true;
+    try {
+      await submitResult(m.id, a, b);
+      root.classList.add("hidden"); root.innerHTML = "";
+      toast("결과가 저장되었습니다. 🏸");
+      loadDone();
+    } catch (e) { console.error(e); toast("저장 실패: " + (e.message || e.code || e)); $("#md-save").disabled = false; }
+  };
+}
+async function submitResult(matchId, scoreA, scoreB) {
+  const winner = scoreA > scoreB ? "A" : "B";
+  await runTransaction(db, async (tx) => {
+    const mRef = doc(db, "matches", matchId);
+    const mSnap = await tx.get(mRef);
+    if (!mSnap.exists()) throw new Error("경기를 찾을 수 없습니다.");
+    const md = mSnap.data();
+    if (md.status === "finished") throw new Error("이미 결과가 입력된 경기입니다.");
+
+    const userSnaps = [];
+    for (const uid of md.players) userSnaps.push(await tx.get(doc(db, "users", uid)));
+    const recSnaps = [];
+    for (const k of md.pairKeys) recSnaps.push(await tx.get(doc(db, "records", k)));
+
+    const rating = {}, prevStreak = {};
+    userSnaps.forEach(s => { rating[s.id] = s.data()?.ratingPoint ?? 1000; prevStreak[s.id] = s.data()?.winStreak ?? 0; });
+    const tA = md.teamA.map(uid => ({ uid, rating: rating[uid] }));
+    const tB = md.teamB.map(uid => ({ uid, rating: rating[uid] }));
+    const deltas = calcDeltas(tA, tB, winner);
+    const winnerUids = winner === "A" ? md.teamA : md.teamB;
+
+    tx.update(mRef, {
+      status: "finished", winnerTeam: winner, scoreA, scoreB,
+      pointDelta: deltas, prevStreak, finishedAt: serverTimestamp()
+    });
+    userSnaps.forEach(s => {
+      const won = winnerUids.includes(s.id);
+      tx.update(s.ref, {
+        ratingPoint: increment(deltas[s.id]),
+        tier: tierOf(rating[s.id] + deltas[s.id]).key,
+        totalWins: increment(won ? 1 : 0),
+        totalLosses: increment(won ? 0 : 1),
+        winStreak: won ? prevStreak[s.id] + 1 : 0
+      });
+    });
+    recSnaps.forEach((s, i) => {
+      const key = md.pairKeys[i], [lo, hi] = key.split("_");
+      const lowWon = winnerUids.includes(lo);
+      if (s.exists()) tx.update(s.ref, {
+        winsLow: increment(lowWon ? 1 : 0), winsHigh: increment(lowWon ? 0 : 1),
+        totalGames: increment(1), lastMatchAt: serverTimestamp()
+      });
+      else tx.set(s.ref, {
+        uidLow: lo, uidHigh: hi, winsLow: lowWon ? 1 : 0, winsHigh: lowWon ? 0 : 1,
+        totalGames: 1, lastMatchAt: serverTimestamp()
+      });
+    });
+    tx.update(doc(db, "courts", "court" + md.courtNo),
+      { status: "empty", currentMatchId: null, updatedAt: serverTimestamp() });
+  });
+}
+
+/* ④ 오늘 완료 경기 + 결과 취소(롤백) */
+$("#btn-reload-done").onclick = loadDone;
+$("#tabbtn-admin")?.addEventListener("click", loadDone);
+async function loadDone() {
+  if (!isAdmin()) return;
+  try {
+    const qs = await getDocs(query(collection(db, "matches"), where("date", "==", fmtDate())));
+    const done = qs.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.status === "finished")
+      .sort((a, b) => (b.finishedAt?.seconds || 0) - (a.finishedAt?.seconds || 0));
+    const area = $("#admin-done");
+    if (!done.length) { area.innerHTML = `<p class="empty-msg">아직 없습니다.</p>`; return; }
+    area.innerHTML = done.map(m => {
+      const winA = m.winnerTeam === "A";
+      return `<div class="card"><div class="row">
+        <div class="grow" style="font-size:14px;">
+          <b>${TYPE_LABEL[m.type]}</b> · ${m.courtNo}코트<br>
+          <span style="${winA ? "font-weight:800; color:var(--win);" : ""}">${m.teamA.map(uname).map(esc).join("·")}</span>
+          <b class="num"> ${m.scoreA} : ${m.scoreB} </b>
+          <span style="${!winA ? "font-weight:800; color:var(--win);" : ""}">${m.teamB.map(uname).map(esc).join("·")}</span>
+        </div>
+        <button class="btn-warn" data-id="${m.id}">결과 취소</button></div></div>`;
+    }).join("");
+    area.querySelectorAll("button").forEach(b => b.onclick = () => rollbackResult(b.dataset.id));
+  } catch (e) { console.error(e); }
+}
+async function rollbackResult(matchId) {
+  if (!confirm("이 경기 결과를 취소하고 포인트·전적을 되돌릴까요?")) return;
+  try {
+    await runTransaction(db, async (tx) => {
+      const mRef = doc(db, "matches", matchId);
+      const mSnap = await tx.get(mRef);
+      const md = mSnap.data();
+      if (!md || md.status !== "finished") throw new Error("완료 상태의 경기가 아닙니다.");
+      const userSnaps = [];
+      for (const uid of md.players) userSnaps.push(await tx.get(doc(db, "users", uid)));
+      const recSnaps = [];
+      for (const k of md.pairKeys) recSnaps.push(await tx.get(doc(db, "records", k)));
+      const winnerUids = md.winnerTeam === "A" ? md.teamA : md.teamB;
+
+      tx.update(mRef, { status: "canceled", winnerTeam: null, canceledAt: serverTimestamp() });
+      userSnaps.forEach(s => {
+        const won = winnerUids.includes(s.id);
+        const d = md.pointDelta?.[s.id] ?? 0;
+        const newRating = (s.data().ratingPoint ?? 1000) - d;
+        tx.update(s.ref, {
+          ratingPoint: increment(-d), tier: tierOf(newRating).key,
+          totalWins: increment(won ? -1 : 0), totalLosses: increment(won ? 0 : -1),
+          winStreak: md.prevStreak?.[s.id] ?? 0
+        });
+      });
+      recSnaps.forEach((s, i) => {
+        if (!s.exists()) return;
+        const key = md.pairKeys[i], [lo] = key.split("_");
+        const lowWon = winnerUids.includes(lo);
+        tx.update(s.ref, {
+          winsLow: increment(lowWon ? -1 : 0), winsHigh: increment(lowWon ? 0 : -1),
+          totalGames: increment(-1)
+        });
+      });
+    });
+    toast("결과를 취소하고 전적을 되돌렸습니다.");
+    loadDone();
+  } catch (e) { console.error(e); toast("취소 실패: " + (e.message || e.code || e)); }
+}
+
+/* ⑤ 회원 관리 */
+function renderMembers() {
+  if (!isAdmin()) return;
+  const all = Object.values(users).sort((a, b) => {
+    const order = { pending: 0, admin: 1, member: 2 };
+    return (order[a.role] ?? 3) - (order[b.role] ?? 3) || a.name.localeCompare(b.name, "ko");
+  });
+  $("#admin-members").innerHTML = all.map(u => {
+    const roleLabel = u.role === "admin" ? "👑 임원" : u.role === "member" ? "회원" : "⏳ 승인 대기";
+    let btns = "";
+    if (u.role === "pending") btns = `<button class="btn-solid" data-act="approve" data-uid="${u.id}" style="padding:8px 14px;">승인</button>`;
+    else if (u.id !== me.uid) btns = u.role === "admin"
+      ? `<button class="btn-warn" data-act="demote" data-uid="${u.id}">임원 해제</button>`
+      : `<button class="btn-line" data-act="promote" data-uid="${u.id}">임원 지정</button>`;
+    return `<div class="card"><div class="row">
+      <div class="grow"><b>${esc(u.name)}</b> <small>(${u.gender === "M" ? "남" : "여"}·${u.grade || "-"}조)</small><br>
+      <small style="color:var(--muted);">${roleLabel} · ${u.ratingPoint ?? 1000}점 · ${u.totalWins || 0}승 ${u.totalLosses || 0}패</small></div>
+      ${btns}</div></div>`;
+  }).join("");
+  $("#admin-members").querySelectorAll("button").forEach(b => b.onclick = async () => {
+    const role = { approve: "member", promote: "admin", demote: "member" }[b.dataset.act];
+    try { await updateDoc(doc(db, "users", b.dataset.uid), { role }); toast("변경했습니다."); }
+    catch (e) { toast("실패: " + e.code); }
+  });
+}
+
+/* ── 탭 전환 ── */
+$$("#tabbar button").forEach(b => b.onclick = () => {
+  $$("#tabbar button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+  $$(".tab").forEach(t => t.classList.add("hidden"));
+  $("#tab-" + b.dataset.tab).classList.remove("hidden");
+  if (b.dataset.tab === "daily" && $("#daily-area").querySelector(".empty-msg")) loadDaily();
+});
+</script>
+</body>
+</html>

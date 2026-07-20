@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<title>코트온 — 배드민턴 동호회 </title>
+<title>코트온 — 배드민턴 동호회</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root{
@@ -354,7 +354,8 @@ let prevMyCourt = null, firstCourtSnap = true, firstChatSnap = true;
 let selUid = null;              // 탭 선택 배치용
 
 const normCourt = d => ({ players: (d?.players || []).slice(), status: d?.status || "empty", matchId: d?.matchId || null });
-const normGroups = d => { const g = (d?.groups || []).map(x => (x || []).slice()); while (g.length < 4) g.push([]); return g.slice(0, 4); };
+const normGroups = d => [0, 1, 2, 3].map(i => (d?.["g" + i] || []).slice());
+const groupsDoc = g => ({ g0: g[0] || [], g1: g[1] || [], g2: g[2] || [], g3: g[3] || [], updatedAt: serverTimestamp() });
 const uname = uid => users[uid]?.name || "?";
 const isOnline = u => u.lastActiveAt?.toMillis && (Date.now() - u.lastActiveAt.toMillis() < ONLINE_MS);
 const isAdmin = () => myProfile?.role === "admin";
@@ -652,7 +653,7 @@ async function mutatePlacement(fn) {
     const groups = normGroups((await tx.get(doc(db, "queue", "main"))).data());
     fn(cs, groups); // 상태 변경 (throw 시 중단)
     cs.forEach((c, i) => { if (c.status !== "playing") tx.set(doc(db, "courts", "court" + (i + 1)), { courtNo: i + 1, players: c.players, status: "empty", matchId: null, updatedAt: serverTimestamp() }); });
-    tx.set(doc(db, "queue", "main"), { groups, updatedAt: serverTimestamp() });
+    tx.set(doc(db, "queue", "main"), groupsDoc(groups));
   });
 }
 function detachEverywhere(uid, cs, groups) {
@@ -795,7 +796,7 @@ async function finishMatch(n, winner, scoreA, scoreB) {
     const k = groups.findIndex(g => g.length > 0);
     if (k >= 0) { nextPlayers = groups[k]; groups.splice(k, 1); groups.push([]); }
     tx.set(cRef, { courtNo: n, players: nextPlayers, status: "empty", matchId: null, updatedAt: serverTimestamp() });
-    tx.set(doc(db, "queue", "main"), { groups, updatedAt: serverTimestamp() });
+    tx.set(doc(db, "queue", "main"), groupsDoc(groups));
   });
 }
 

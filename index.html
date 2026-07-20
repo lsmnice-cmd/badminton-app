@@ -292,6 +292,14 @@ const firebaseConfig = {
 };
 /* ═══════════════════════════════════════════════════════════ */
 
+/* ★ 선택: 가입 신청 텔레그램 알림 (설치 가이드 10단계 참고)
+   봇 토큰과 채팅 ID를 넣으면, 누군가 가입 신청할 때
+   텔레그램으로 알림 + 「바로 승인」 링크가 옵니다. 비워두면 꺼집니다. */
+const TELEGRAM = {
+  botToken: "",   // 예: "7123456789:AAF..."
+  chatId: ""      // 예: "123456789"
+};
+
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
@@ -355,6 +363,31 @@ function whereIs(uid) {
   for (let n = 1; n <= 4; n++) if (courts[n]?.players.includes(uid)) return { kind: "court", n, playing: courts[n].status === "playing" };
   for (let i = 0; i < 4; i++) if (queueGroups[i].includes(uid)) return { kind: "queue", n: i + 1 };
   return null;
+}
+
+/* ── 텔레그램 알림 ── */
+async function sendTelegram(text) {
+  if (!TELEGRAM.botToken || !TELEGRAM.chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM.botToken}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM.chatId, text })
+    });
+  } catch (e) { console.warn("telegram:", e); }
+}
+let approveUid = new URLSearchParams(location.search).get("approve");
+async function handleApproveLink() {
+  if (!approveUid || !myProfile) return;
+  const t = users[approveUid];
+  if (!t) return; // 아직 회원 목록 수신 전이면 다음 갱신 때 재시도
+  const uid = approveUid; approveUid = null;
+  history.replaceState(null, "", location.pathname);
+  if (!isAdmin()) { toast("승인 권한이 없습니다. (임원 전용)"); return; }
+  if (t.role !== "pending") { toast(`${t.name}님은 이미 처리된 회원입니다.`); return; }
+  if (confirm(`${t.name}님(${t.birthYear ? String(t.birthYear).slice(2) + "년생·" : ""}${t.gender === "M" ? "남" : "여"}·${t.grade || "-"}조)의 가입을 승인할까요?`)) {
+    try { await updateDoc(doc(db, "users", uid), { role: "member" }); toast(`${t.name}님을 승인했습니다. 🏸`); }
+    catch (e) { toast("승인 실패: " + e.code); }
+  }
 }
 
 /* ── 사운드/토스트 ── */
@@ -435,6 +468,11 @@ $("#btn-setup").onclick = async () => {
       totalWins: 0, totalLosses: 0, winStreak: 0, fcmTokens: [],
       joinedAt: serverTimestamp(), lastActiveAt: serverTimestamp()
     });
+    sendTelegram(
+      `🏸 코트온 가입 신청\n` +
+      `${$("#su-name").value.trim()} (${String($("#su-birth").value).slice(2)}년생 · ${suGender === "M" ? "남" : "여"} · ${suGrade}조)\n\n` +
+      `바로 승인 ▶ ${location.origin + location.pathname}?approve=${me.uid}`
+    );
     watchMyDoc();
   } catch (e) { toast("가입 신청 실패: " + e.code); $("#btn-setup").disabled = false; }
 };
@@ -467,6 +505,7 @@ function startApp() {
   // ① 회원 전체
   unsubs.push(onSnapshot(query(collection(db, "users"), orderBy("ratingPoint", "desc")), (qs) => {
     users = {}; qs.forEach(d => users[d.id] = { id: d.id, ...d.data() });
+    handleApproveLink();
     renderOnline(); renderRanking(); renderH2HSelects(); renderMembers(); renderCourts(); renderQueue();
   }, e => console.error("users:", e)));
 

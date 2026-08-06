@@ -7,10 +7,9 @@
    ║  ★★★ 설정은 여기 딱 한 곳입니다 ★★★                      ║
    ╚═══════════════════════════════════════════════════════════╝
 
-/* ═══════════════════════════════════════════════════════════
-   ★ 1단계: Firebase 콘솔에서 복사한 설정을 아래에 붙여넣으세요.
-   ═══════════════════════════════════════════════════════════ */
-const firebaseConfig = {
+   [1] Firebase 설정 — 콘솔에서 복사한 6줄을 아래에 붙여넣으세요.
+       (설치 가이드 3단계) */
+window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyBiPPMAvNK4lVSfLk708NZacsJXm4KHE2A",
   authDomain: "badminton-app-8d899.firebaseapp.com",
   projectId: "badminton-app-8d899",
@@ -18,14 +17,12 @@ const firebaseConfig = {
   messagingSenderId: "313539970831",
   appId: "1:313539970831:web:b704ffa85bba8b3039a07a"
 };
-/* ═══════════════════════════════════════════════════════════ */
 
-/* ★ 선택: 가입 신청 텔레그램 알림 (설치 가이드 10단계 참고)
-   봇 토큰과 채팅 ID를 넣으면, 누군가 가입 신청할 때
-   텔레그램으로 알림 + 「바로 승인」 링크가 옵니다. 비워두면 꺼집니다. */
-const TELEGRAM = {
-  botToken: "8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI",   // 예: 8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI
-  chatId: "7958380809"      // 예: "123456789"
+/* [2] 텔레그램 가입 알림 (선택 — 설치 가이드 10단계)
+       비워두면 꺼진 상태로 동작합니다. */
+window.TELEGRAM_CONFIG = {
+  botToken: "8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI",
+  chatId: "7958380809"
 };
 
 /* ═══════ 설정 끝 — 아래는 수정할 필요 없습니다 ═══════ */
@@ -190,6 +187,7 @@ const TELEGRAM = {
   <h1>코트온</h1>
   <p>우리 동호회 실시간 코트 · 전적 기록</p>
   <button id="btn-login" class="btn-primary">Google로 시작하기</button>
+  <button id="btn-login-alt" class="ghost">버튼을 눌러도 반응이 없나요? 다른 방식으로 로그인</button>
 </div>
 
 <!-- 최초 프로필 설정 -->
@@ -319,7 +317,7 @@ const TELEGRAM = {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit,
   onSnapshot, getDocs, runTransaction, serverTimestamp, increment }
@@ -465,14 +463,33 @@ if (firebaseConfig.apiKey.includes("여기에")) {
 }
 
 /* ── 인증 ── */
+const gProvider = () => { const p = new GoogleAuthProvider(); p.setCustomParameters({ prompt: "select_account" }); return p; };
 $("#btn-login").onclick = async () => {
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  const btn = $("#btn-login");
+  btn.disabled = true; btn.textContent = "로그인 창 여는 중…";
+  try { await signInWithPopup(auth, gProvider()); }
   catch (e) {
-    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")
-      await signInWithRedirect(auth, new GoogleAuthProvider());
-    else toast("로그인 실패: " + e.code);
+    console.error("login:", e);
+    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") {
+      toast("팝업이 차단되어 다른 방식으로 이동합니다…");
+      try { await signInWithRedirect(auth, gProvider()); }
+      catch (e2) { toast("로그인 실패: " + (e2.code || e2.message)); }
+    } else if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") {
+      toast("로그인 창이 닫혔습니다. 다시 시도하거나 아래 「다른 방식으로 로그인」을 눌러 주세요.");
+    } else {
+      toast("로그인 실패: " + (e.code || e.message));
+    }
   }
+  btn.disabled = false; btn.textContent = "Google로 시작하기";
 };
+$("#btn-login-alt").onclick = async () => {
+  try { await signInWithRedirect(auth, gProvider()); }
+  catch (e) { toast("로그인 실패: " + (e.code || e.message)); }
+};
+getRedirectResult(auth).catch(e => {
+  console.error("redirect:", e);
+  if (e?.code && e.code !== "auth/no-auth-event") toast("로그인 실패: " + e.code);
+});
 $("#btn-logout").onclick = () => signOut(auth);
 $("#btn-logout-pending").onclick = () => signOut(auth);
 

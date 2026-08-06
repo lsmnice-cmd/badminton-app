@@ -2,6 +2,34 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>
+/* ╔═══════════════════════════════════════════════════════════╗
+   ║  ★★★ 설정은 여기 딱 한 곳입니다 ★★★                      ║
+   ╚═══════════════════════════════════════════════════════════╝
+
+/* ═══════════════════════════════════════════════════════════
+   ★ 1단계: Firebase 콘솔에서 복사한 설정을 아래에 붙여넣으세요.
+   ═══════════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBiPPMAvNK4lVSfLk708NZacsJXm4KHE2A",
+  authDomain: "badminton-app-8d899.firebaseapp.com",
+  projectId: "badminton-app-8d899",
+  storageBucket: "badminton-app-8d899.firebasestorage.app",
+  messagingSenderId: "313539970831",
+  appId: "1:313539970831:web:b704ffa85bba8b3039a07a"
+};
+/* ═══════════════════════════════════════════════════════════ */
+
+/* ★ 선택: 가입 신청 텔레그램 알림 (설치 가이드 10단계 참고)
+   봇 토큰과 채팅 ID를 넣으면, 누군가 가입 신청할 때
+   텔레그램으로 알림 + 「바로 승인」 링크가 옵니다. 비워두면 꺼집니다. */
+const TELEGRAM = {
+  botToken: "8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI",   // 예: 8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI
+  chatId: "7958380809"      // 예: "123456789"
+};
+
+/* ═══════ 설정 끝 — 아래는 수정할 필요 없습니다 ═══════ */
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>코트온 — 배드민턴 동호회</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -246,7 +274,7 @@
     <section id="tab-h2h" class="tab hidden">
       <h2>내 상대 전적 <button class="ghost right" id="btn-h2h-reload">새로고침</button></h2>
       <div id="my-h2h"></div>
-      <p class="hint">상대 이름을 누르면 최근 맞대결 내역이 펼쳐집니다.</p>
+      <p class="hint">상대 이름을 누르면 최근 맞대결 내역이 펼쳐집니다. 복식이라 한 경기는 상대팀 2명 각각의 상대 전적에 1전씩 기록됩니다.</p>
       <h2>다른 두 회원 비교</h2>
       <div class="row" style="margin-bottom:10px;">
         <select id="h2h-a"><option value="">선수 1</option></select>
@@ -297,26 +325,9 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collec
   onSnapshot, getDocs, runTransaction, serverTimestamp, increment }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* ═══════════════════════════════════════════════════════════
-   ★ 1단계: Firebase 콘솔에서 복사한 설정을 아래에 붙여넣으세요.
-   ═══════════════════════════════════════════════════════════ */
-const firebaseConfig = {
-  apiKey: "AIzaSyBiPPMAvNK4lVSfLk708NZacsJXm4KHE2A",
-  authDomain: "badminton-app-8d899.firebaseapp.com",
-  projectId: "badminton-app-8d899",
-  storageBucket: "badminton-app-8d899.firebasestorage.app",
-  messagingSenderId: "313539970831",
-  appId: "1:313539970831:web:b704ffa85bba8b3039a07a"
-};
-/* ═══════════════════════════════════════════════════════════ */
-
-/* ★ 선택: 가입 신청 텔레그램 알림 (설치 가이드 10단계 참고)
-   봇 토큰과 채팅 ID를 넣으면, 누군가 가입 신청할 때
-   텔레그램으로 알림 + 「바로 승인」 링크가 옵니다. 비워두면 꺼집니다. */
-const TELEGRAM = {
-  botToken: "8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI",   // 예: 8229159998:AAFbwcoerxU6U3onEqCK6WJeW8M6IGXB2vI
-  chatId: "7958380809"      // 예: "123456789"
-};
+/* 설정은 파일 맨 위 <head>의 window.FIREBASE_CONFIG / window.TELEGRAM_CONFIG 에서 읽어옵니다 */
+const firebaseConfig = window.FIREBASE_CONFIG;
+const TELEGRAM = window.TELEGRAM_CONFIG;
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -984,17 +995,24 @@ async function loadDaily() {
         const wr = Math.round(a.wins / a.games * 100);
         const oppLines = Object.entries(a.opp).sort((x, y) => y[1].g - x[1].g)
           .map(([o, s]) => `vs ${esc(uname(o))} — ${s.g}전 ${s.w}승 ${s.l}패`).join("<br>");
-        return `<tr><td colspan="5" style="padding:0;"><details class="opp">
-          <summary style="display:flex; padding:10px 12px; align-items:center;">
-            <span style="flex:1; text-align:left; font-weight:700;">${esc(uname(uid))}</span>
-            <span class="num" style="width:52px;">${a.games}경기</span>
-            <span class="num" style="width:76px;">${a.wins}승 ${a.losses}패</span>
-            <span class="num" style="width:46px;">${wr}%</span></summary>
-          <div class="opp-lines">${oppLines}</div></details></td></tr>`;
+        return `<details class="opp" style="border-top:1px solid var(--edge);">
+          <summary style="display:flex; padding:11px 12px; align-items:center; gap:4px;">
+            <span style="flex:1; text-align:left; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis;">${esc(uname(uid))}</span>
+            <span class="num" style="width:52px; text-align:center; flex:none;">${a.games}</span>
+            <span class="num" style="width:90px; text-align:center; flex:none;">${a.wins}승 ${a.losses}패</span>
+            <span class="num" style="width:50px; text-align:center; flex:none;">${wr}%</span></summary>
+          <div class="opp-lines">${oppLines}</div></details>`;
       }).join("");
     $("#daily-area").innerHTML =
       `<p class="hint" style="margin-bottom:8px;">${d} · 총 ${done.length}경기</p>
-       <table><thead><tr><th style="text-align:left; padding-left:12px;">회원</th><th>경기</th><th>승패</th><th>승률</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+       <div class="card" style="padding:0; overflow:hidden;">
+         <div style="display:flex; padding:9px 12px; gap:4px; background:var(--court-deep); color:#fff; font-size:12px; font-weight:700;">
+           <span style="flex:1; text-align:left;">회원</span>
+           <span style="width:52px; text-align:center; flex:none;">경기</span>
+           <span style="width:90px; text-align:center; flex:none;">승패</span>
+           <span style="width:50px; text-align:center; flex:none;">승률</span></div>
+         ${rows}
+       </div>`;
   } catch (e) { console.error(e); $("#daily-area").innerHTML = `<p class="empty-msg">조회 실패: ${e.code || e}</p>`; }
 }
 
@@ -1032,10 +1050,10 @@ async function loadMyH2H() {
       return;
     }
     rows.sort((a, b) => b.g - a.g || b.w - a.w);
-    const totW = rows.reduce((s, r) => s + r.w, 0), totL = rows.reduce((s, r) => s + r.l, 0);
+    const tw = myProfile.totalWins || 0, tl = myProfile.totalLosses || 0;
     area.innerHTML = `<div class="card" style="text-align:center;">
-        <b>${esc(myProfile.name)}</b> 상대 전적 합계 —
-        <span class="num"><b>${totW + totL}전</b> <span style="color:var(--win); font-weight:800;">${totW}승</span> <span style="color:var(--loss); font-weight:800;">${totL}패</span></span>
+        <b>${esc(myProfile.name)}</b> 통산 전적 —
+        <span class="num"><b>${tw + tl}전</b> <span style="color:var(--win); font-weight:800;">${tw}승</span> <span style="color:var(--loss); font-weight:800;">${tl}패</span></span>
       </div>` +
       rows.map(r => {
         const wr = Math.round(r.w / r.g * 100);

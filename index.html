@@ -59,8 +59,10 @@
   .court .status{position:absolute; top:5px; right:6px; font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:20px; z-index:2;}
   .status.s-ready{background:var(--accent); color:#3A2C00;}
   .status.s-playing{background:var(--playing); color:#fff;}
-  .court .half{flex:1; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px; padding:16px 4px 4px;}
-  .court .half.b{padding:4px 4px 6px;}
+  .court .half{flex:1; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px; padding:16px 22px 4px; position:relative;}
+  .court .half.b{padding:4px 22px 6px;}
+  .court .half .tmark{position:absolute; left:8px; top:50%; transform:translateY(-50%); font-size:10px; font-weight:800; font-style:normal; opacity:.85;}
+  .court .half.drop-hi{background:rgba(245,183,10,.28); border-radius:10px;}
   .court .net{border-top:2px dashed rgba(255,255,255,.85); margin:0 8px; position:relative;}
   .court .net span{position:absolute; left:50%; top:-9px; transform:translateX(-50%); background:var(--court); font-size:10px; padding:0 6px; font-weight:700;}
   .court.is-empty .net span{background:#AFBFB3;}
@@ -84,6 +86,10 @@
   .qslot .qppl{display:flex; flex-wrap:wrap; gap:4px;}
   .qslot .slotp{background:#EEF3EC; color:var(--ink);}
   .qslot .slotp .rm{background:#C9D4C9; color:#fff;}
+  .qteam{display:flex; align-items:flex-start; gap:6px; padding:4px 3px; border-radius:8px;}
+  .qteam > b{font-size:10px; width:28px; flex:none; padding-top:8px;}
+  .qteam .qa, b.qa{color:var(--teamA);} .qteam .qb, b.qb{color:var(--teamB);}
+  .qteam.drop-hi{box-shadow:0 0 0 2.5px var(--accent); background:#FFFBEA;}
 
   /* ── 접속자 칩 ── */
   .pchips{display:flex; flex-wrap:wrap; gap:8px;}
@@ -201,12 +207,12 @@
       <h2>코트 현황 <span class="cnt" id="court-cnt"></span></h2>
       <div class="courts" id="court-board"></div>
 
-      <h2>경기 대기 <span class="cnt">코트가 차면 여기서 순서를 기다립니다</span></h2>
+      <h2>경기 대기 <span class="cnt">A/B팀을 미리 짜두면 입장 시 그대로 반영됩니다</span></h2>
       <div class="queue" id="queue-area"></div>
 
       <h2>접속 중 <span class="cnt" id="online-cnt"></span></h2>
       <div class="pchips" id="online-area"></div>
-      <p class="hint">이름표를 <b>끌어서 코트나 대기칸에 놓거나</b>, 이름표를 한 번 누른 뒤 코트/대기칸을 누르면 배치됩니다. 코트에 4명이 모이면 「경기 시작」이 나타납니다. 경기가 끝나면 <b>1순위 대기팀이 자동으로 그 코트에 배정</b>되고 알림·진동이 갑니다.</p>
+      <p class="hint">이름표를 <b>코트의 위(A팀)/아래(B팀) 또는 대기칸의 A팀/B팀 줄에 끌어다 놓으면</b> 팀이 정해집니다. 이름표를 한 번 누른 뒤 원하는 자리를 눌러도 됩니다. 경기가 끝나면 <b>1순위 대기팀이 미리 짜둔 팀 그대로 자동 입장</b>하고 알림·진동이 갑니다.</p>
     </section>
 
     <!-- 채팅 -->
@@ -238,7 +244,10 @@
 
     <!-- 상대 전적 -->
     <section id="tab-h2h" class="tab hidden">
-      <h2>상대 전적</h2>
+      <h2>내 상대 전적 <button class="ghost right" id="btn-h2h-reload">새로고침</button></h2>
+      <div id="my-h2h"></div>
+      <p class="hint">상대 이름을 누르면 최근 맞대결 내역이 펼쳐집니다.</p>
+      <h2>다른 두 회원 비교</h2>
       <div class="row" style="margin-bottom:10px;">
         <select id="h2h-a"><option value="">선수 1</option></select>
         <span style="font-weight:800;">VS</span>
@@ -252,7 +261,7 @@
       <h2>튜토리얼 · 연습 모드</h2>
       <div class="card">
         <div class="row">
-          <button class="btn-line" id="btn-dummy-add">더미 회원 6명 추가</button>
+          <button class="btn-line" id="btn-dummy-add">더미 회원 20명 추가</button>
           <button class="btn-warn" id="btn-dummy-del">더미 전체 삭제</button>
         </div>
         <p class="hint">연습 순서: ① 더미 추가 → ② 코트 탭에서 이름표 4명을 코트에 끌어다 배치 → ③ 「경기 시작」 → ④ 다음 팀을 1순위 대기칸에 배치 → ⑤ 「경기 종료」·승패 선택 → 대기팀 자동 입장 확인 → ⑥ 연습 끝나면 아래 「결과 취소」로 기록을 되돌리고 더미 삭제</p>
@@ -292,12 +301,12 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collec
    ★ 1단계: Firebase 콘솔에서 복사한 설정을 아래에 붙여넣으세요.
    ═══════════════════════════════════════════════════════════ */
 const firebaseConfig = {
-  apiKey: "AIzaSyBiPPMAvNK4lVSfLk708NZacsJXm4KHE2A",
-  authDomain: "badminton-app-8d899.firebaseapp.com",
-  projectId: "badminton-app-8d899",
-  storageBucket: "badminton-app-8d899.firebasestorage.app",
-  messagingSenderId: "313539970831",
-  appId: "1:313539970831:web:b704ffa85bba8b3039a07a"
+  apiKey: "여기에_붙여넣기",
+  authDomain: "여기에_붙여넣기",
+  projectId: "여기에_붙여넣기",
+  storageBucket: "여기에_붙여넣기",
+  messagingSenderId: "여기에_붙여넣기",
+  appId: "여기에_붙여넣기"
 };
 /* ═══════════════════════════════════════════════════════════ */
 
@@ -355,24 +364,34 @@ function typeOf(uids) {
 let me = null, myProfile = null, appStarted = false;
 let users = {};                 // uid → 회원
 let courts = {};                // n → {players, status, matchId}
-let queueGroups = [[], [], [], []];
+let queueGroups = [{ a: [], b: [] }, { a: [], b: [] }, { a: [], b: [] }, { a: [], b: [] }];
 let todayMatches = [];          // 오늘 생성된 경기 전부
 let chatMsgs = [];
 let unsubs = [], timers = [];
 let prevMyCourt = null, firstCourtSnap = true, firstChatSnap = true;
 let selUid = null;              // 탭 선택 배치용
 
-const normCourt = d => ({ players: (d?.players || []).slice(), status: d?.status || "empty", matchId: d?.matchId || null });
-const normGroups = d => [0, 1, 2, 3].map(i => (d?.["g" + i] || []).slice());
-const groupsDoc = g => ({ g0: g[0] || [], g1: g[1] || [], g2: g[2] || [], g3: g[3] || [], updatedAt: serverTimestamp() });
+const normCourt = d => {
+  let a = (d?.a || []).slice(), b = (d?.b || []).slice();
+  if (!a.length && !b.length && d?.players?.length) { a = d.players.slice(0, 2); b = d.players.slice(2, 4); } // 구버전 데이터 호환
+  return { a, b, status: d?.status || "empty", matchId: d?.matchId || null };
+};
+const courtPlayers = c => c.a.concat(c.b);
+const normGroups = d => [0, 1, 2, 3].map(i => {
+  let a = (d?.["g" + i + "a"] || []).slice(), b = (d?.["g" + i + "b"] || []).slice();
+  if (!a.length && !b.length && d?.["g" + i]?.length) { const g = d["g" + i]; a = g.slice(0, 2); b = g.slice(2, 4); } // 구버전 호환
+  return { a, b };
+});
+const groupsDoc = g => { const o = { updatedAt: serverTimestamp() }; g.forEach((x, i) => { o["g" + i + "a"] = x.a || []; o["g" + i + "b"] = x.b || []; }); return o; };
+const groupSize = x => x.a.length + x.b.length;
 const uname = uid => users[uid]?.name || "?";
 const gradeTxt = u => { const g = u?.grade; return !g ? "-" : (g === "초심" ? "초심" : g + "조"); };
 const isOnline = u => u.dummy === true || (u.lastActiveAt?.toMillis && (Date.now() - u.lastActiveAt.toMillis() < ONLINE_MS));
 const isAdmin = () => myProfile?.role === "admin";
 const todayCount = uid => todayMatches.filter(m => m.status === "finished" && m.players.includes(uid)).length;
 function whereIs(uid) {
-  for (let n = 1; n <= 4; n++) if (courts[n]?.players.includes(uid)) return { kind: "court", n, playing: courts[n].status === "playing" };
-  for (let i = 0; i < 4; i++) if (queueGroups[i].includes(uid)) return { kind: "queue", n: i + 1 };
+  for (let n = 1; n <= 4; n++) { const c = courts[n]; if (c && courtPlayers(c).includes(uid)) return { kind: "court", n, playing: c.status === "playing" }; }
+  for (let i = 0; i < 4; i++) { const g = queueGroups[i]; if (g.a.includes(uid) || g.b.includes(uid)) return { kind: "queue", n: i + 1 }; }
   return null;
 }
 
@@ -594,9 +613,11 @@ function renderCourts() {
   let html = "";
   for (let n = 1; n <= 4; n++) {
     const c = courts[n] || normCourt(null);
-    const p = c.players, playing = c.status === "playing";
-    const stat = playing ? `<span class="status s-playing">경기중</span>` : (p.length === 4 ? `<span class="status s-ready">준비완료</span>` : "");
-    const half = (arr, cls) => `<div class="half ${cls}">` +
+    const p = courtPlayers(c), playing = c.status === "playing";
+    const ready = c.a.length === 2 && c.b.length === 2;
+    const stat = playing ? `<span class="status s-playing">경기중</span>` : (ready ? `<span class="status s-ready">준비완료</span>` : "");
+    const half = (arr, cls, mark, markColor) => `<div class="half ${cls}" data-drop="court:${n}:${cls}">
+      <i class="tmark" style="color:${markColor};">${mark}</i>` +
       (arr.length ? arr.map(u => playerSlot(u, "court" + n)).join("") : `<span class="slot-empty">여기로 끌어오세요</span>`) + `</div>`;
     let btns = "";
     if (playing) {
@@ -606,15 +627,15 @@ function renderCourts() {
         <div class="cbtns"><button class="b-finish" data-finish="${n}">경기 종료</button><button class="b-clear" data-cancelm="${n}">경기 취소</button></div>`;
     } else {
       btns = `<div class="cbtns">
-        ${p.length === 4 ? `<button class="b-start" data-start="${n}">경기 시작</button>` : ""}
+        ${ready ? `<button class="b-start" data-start="${n}">경기 시작</button>` : ""}
         ${p.length > 0 ? `<button class="b-clear" data-clear="${n}">비우기</button>` : ""}</div>`;
     }
     const label = p.length === 4 ? TYPE_LABEL[typeOf(p)] : "네트";
-    html += `<div class="court ${p.length ? "" : "is-empty"}" data-drop="court:${n}">
+    html += `<div class="court ${p.length ? "" : "is-empty"}" data-drop="court:${n}:auto">
       <span class="cno">${n}코트</span>${stat}
-      ${half(p.slice(0, 2), "a")}
+      ${half(c.a, "a", "A", "#9EC9FF")}
       <div class="net"><span>${label}</span></div>
-      ${half(p.slice(2, 4), "b")}
+      ${half(c.b, "b", "B", "#FFB3A7")}
       ${btns}</div>`;
   }
   $("#court-board").innerHTML = html;
@@ -626,17 +647,31 @@ function renderCourts() {
   $$("#court-board [data-cancelm]").forEach(b => b.onclick = e => { e.stopPropagation(); cancelPlaying(+b.dataset.cancelm); });
   $$("#court-board [data-clear]").forEach(b => b.onclick = e => { e.stopPropagation(); clearCourt(+b.dataset.clear); });
   $$("#court-board [data-rm]").forEach(b => b.onclick = e => { e.stopPropagation(); removePlayer(b.dataset.rm); });
-  $$("#court-board [data-drop]").forEach(el => el.onclick = () => { if (selUid) { const [, n] = el.dataset.drop.split(":"); assign(selUid, "court", +n); clearSel(); } });
+  $("#court-board").onclick = zoneClick;
 }
 function renderQueue() {
   if (!appStarted) return;
+  const team = (i, side, g) => `<div class="qteam" data-drop="queue:${i}:${side}">
+      <b class="${side === "a" ? "qa" : "qb"}">${side.toUpperCase()}팀</b>
+      <div class="qppl">${g.length ? g.map(u => playerSlot(u, "queue" + i)).join("") : `<span class="slot-empty" style="color:#B4BFB5;">비어 있음</span>`}</div>
+    </div>`;
   $("#queue-area").innerHTML = queueGroups.map((g, i) => `
-    <div class="qslot ${i === 0 ? "first" : ""}" data-drop="queue:${i}">
+    <div class="qslot ${i === 0 ? "first" : ""}" data-drop="queue:${i}:auto">
       <div class="qtitle">${i + 1}순위 대기 ${i === 0 ? "· 다음 입장" : ""}</div>
-      <div class="qppl">${g.length ? g.map(u => playerSlot(u, "queue" + i)).join("") : `<span class="slot-empty" style="color:#B4BFB5;">비어 있음 (최대 4명)</span>`}</div>
+      ${team(i, "a", g.a)}
+      ${team(i, "b", g.b)}
     </div>`).join("");
   $$("#queue-area [data-rm]").forEach(b => b.onclick = e => { e.stopPropagation(); removePlayer(b.dataset.rm); });
-  $$("#queue-area [data-drop]").forEach(el => el.onclick = () => { if (selUid) { const [, i] = el.dataset.drop.split(":"); assign(selUid, "queue", +i); clearSel(); } });
+  $("#queue-area").onclick = zoneClick;
+}
+function zoneClick(e) {
+  if (!selUid) return;
+  if (e.target.closest("button")) return;
+  const z = e.target.closest("[data-drop]");
+  if (!z) return;
+  const [kind, n, side] = z.dataset.drop.split(":");
+  assign(selUid, kind, +n, side);
+  clearSel();
 }
 function renderOnline() {
   if (!appStarted) return;
@@ -663,17 +698,27 @@ async function mutatePlacement(fn) {
     for (let n = 1; n <= 4; n++) cs.push(normCourt((await tx.get(doc(db, "courts", "court" + n))).data()));
     const groups = normGroups((await tx.get(doc(db, "queue", "main"))).data());
     fn(cs, groups); // 상태 변경 (throw 시 중단)
-    cs.forEach((c, i) => { if (c.status !== "playing") tx.set(doc(db, "courts", "court" + (i + 1)), { courtNo: i + 1, players: c.players, status: "empty", matchId: null, updatedAt: serverTimestamp() }); });
+    cs.forEach((c, i) => { if (c.status !== "playing") tx.set(doc(db, "courts", "court" + (i + 1)), { courtNo: i + 1, a: c.a, b: c.b, players: c.a.concat(c.b), status: "empty", matchId: null, updatedAt: serverTimestamp() }); });
     tx.set(doc(db, "queue", "main"), groupsDoc(groups));
   });
 }
 function detachEverywhere(uid, cs, groups) {
-  const pIdx = cs.findIndex(c => c.status === "playing" && c.players.includes(uid));
+  const pIdx = cs.findIndex(c => c.status === "playing" && courtPlayers(c).includes(uid));
   if (pIdx >= 0) throw new Error(`${pIdx + 1}코트에서 경기 중인 회원입니다.`);
-  cs.forEach(c => { if (c.status !== "playing") c.players = c.players.filter(x => x !== uid); });
-  groups.forEach((g, i) => groups[i] = g.filter(x => x !== uid));
+  cs.forEach(c => { if (c.status !== "playing") { c.a = c.a.filter(x => x !== uid); c.b = c.b.filter(x => x !== uid); } });
+  groups.forEach(g => { g.a = g.a.filter(x => x !== uid); g.b = g.b.filter(x => x !== uid); });
 }
-async function assign(uid, kind, n) {
+function pushSide(box, side, uid) {
+  // side: 'a' | 'b' | 'auto' — 팀당 2명
+  let s = (side === "a" || side === "b") ? side : (box.a.length < 2 ? "a" : "b");
+  if (box[s].length >= 2) {
+    const o = s === "a" ? "b" : "a";
+    if (side !== "a" && side !== "b" && box[o].length < 2) s = o;
+    else throw new Error(`${s.toUpperCase()}팀 자리가 찼습니다. (팀당 2명)`);
+  }
+  box[s].push(uid);
+}
+async function assign(uid, kind, n, side = "auto") {
   if (!users[uid]) return;
   try {
     await mutatePlacement((cs, groups) => {
@@ -681,11 +726,9 @@ async function assign(uid, kind, n) {
       if (kind === "court") {
         const t = cs[n - 1];
         if (t.status === "playing") throw new Error("경기 중인 코트에는 배치할 수 없습니다.");
-        if (t.players.length >= 4) throw new Error("코트가 가득 찼습니다. 대기칸에 놓아주세요.");
-        t.players.push(uid);
+        pushSide(t, side, uid);
       } else {
-        if (groups[n].length >= 4) throw new Error("이 대기칸은 가득 찼습니다.");
-        groups[n].push(uid);
+        pushSide(groups[n], side, uid);
       }
     });
   } catch (e) { toast(e.message || e.code); }
@@ -699,7 +742,7 @@ async function clearCourt(n) {
     await runTransaction(db, async (tx) => {
       const c = normCourt((await tx.get(doc(db, "courts", "court" + n))).data());
       if (c.status === "playing") throw new Error("경기 중인 코트입니다.");
-      tx.set(doc(db, "courts", "court" + n), { courtNo: n, players: [], status: "empty", matchId: null, updatedAt: serverTimestamp() });
+      tx.set(doc(db, "courts", "court" + n), { courtNo: n, a: [], b: [], players: [], status: "empty", matchId: null, updatedAt: serverTimestamp() });
     });
   } catch (e) { toast(e.message || e.code); }
 }
@@ -713,7 +756,7 @@ async function cancelPlaying(n) {
       const mRef = doc(db, "matches", c.matchId);
       const md = (await tx.get(mRef)).data();
       if (md && md.status === "playing") tx.update(mRef, { status: "canceled", canceledAt: serverTimestamp() });
-      tx.set(cRef, { courtNo: n, players: c.players, status: "empty", matchId: null, updatedAt: serverTimestamp() });
+      tx.set(cRef, { courtNo: n, a: c.a, b: c.b, players: courtPlayers(c), status: "empty", matchId: null, updatedAt: serverTimestamp() });
     });
     toast("경기를 취소했습니다. 선수들은 코트에 남아 있습니다.");
   } catch (e) { toast(e.message || e.code); }
@@ -726,13 +769,14 @@ async function startMatch(n) {
       const cRef = doc(db, "courts", "court" + n);
       const c = normCourt((await tx.get(cRef)).data());
       if (c.status === "playing") throw new Error("이미 경기 중입니다.");
-      if (c.players.length !== 4) throw new Error("4명이 모여야 시작할 수 있습니다.");
-      const teamA = c.players.slice(0, 2), teamB = c.players.slice(2, 4);
+      if (c.a.length !== 2 || c.b.length !== 2) throw new Error("A팀 2명 · B팀 2명이 모여야 시작할 수 있습니다.");
+      const teamA = c.a.slice(), teamB = c.b.slice();
+      const players = teamA.concat(teamB);
       const pairKeys = []; teamA.forEach(a => teamB.forEach(b => pairKeys.push(pairKey(a, b))));
       const mRef = doc(collection(db, "matches"));
       tx.set(mRef, {
-        date: fmtDate(), type: typeOf(c.players), courtNo: n, teamA, teamB,
-        players: c.players.slice(), pairKeys, status: "playing",
+        date: fmtDate(), type: typeOf(players), courtNo: n, teamA, teamB,
+        players, pairKeys, status: "playing",
         scoreA: null, scoreB: null, winnerTeam: null,
         createdBy: me.uid, createdAt: serverTimestamp(), startedAt: serverTimestamp()
       });
@@ -746,7 +790,7 @@ async function startMatch(n) {
 function openFinishModal(n) {
   const c = courts[n]; if (!c || c.status !== "playing") return;
   const m = todayMatches.find(x => x.id === c.matchId);
-  const tA = (m?.teamA || c.players.slice(0, 2)), tB = (m?.teamB || c.players.slice(2, 4));
+  const tA = (m?.teamA || c.a), tB = (m?.teamB || c.b);
   const root = $("#modal-root");
   root.classList.remove("hidden");
   root.innerHTML = `<div class="modal">
@@ -817,11 +861,11 @@ async function finishMatch(n, winner, scoreA, scoreB) {
       else tx.set(s.ref, { uidLow: lo, uidHigh: hi, winsLow: lowWon ? 1 : 0, winsHigh: lowWon ? 0 : 1, totalGames: 1, lastMatchAt: serverTimestamp() });
     });
 
-    // 대기 1순위 자동 입장 + 순번 당기기
-    let nextPlayers = [];
-    const k = groups.findIndex(g => g.length > 0);
-    if (k >= 0) { nextPlayers = groups[k]; groups.splice(k, 1); groups.push([]); }
-    tx.set(cRef, { courtNo: n, players: nextPlayers, status: "empty", matchId: null, updatedAt: serverTimestamp() });
+    // 대기 1순위 자동 입장 (미리 짠 A/B팀 그대로) + 순번 당기기
+    let next = { a: [], b: [] };
+    const k = groups.findIndex(g => groupSize(g) > 0);
+    if (k >= 0) { next = groups[k]; groups.splice(k, 1); groups.push({ a: [], b: [] }); }
+    tx.set(cRef, { courtNo: n, a: next.a, b: next.b, players: next.a.concat(next.b), status: "empty", matchId: null, updatedAt: serverTimestamp() });
     tx.set(doc(db, "queue", "main"), groupsDoc(groups));
   });
 }
@@ -858,8 +902,8 @@ document.addEventListener("pointerup", (e) => {
     drag.ghost?.remove();
     const zone = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-drop]");
     if (zone) {
-      const [kind, n] = zone.dataset.drop.split(":");
-      assign(drag.uid, kind, kind === "court" ? +n : +n);
+      const [kind, n, side] = zone.dataset.drop.split(":");
+      assign(drag.uid, kind, +n, side);
     }
     clearSel();
   } else {
@@ -964,6 +1008,70 @@ function renderH2HSelects() {
   });
 }
 $("#h2h-a").onchange = loadH2H; $("#h2h-b").onchange = loadH2H;
+$("#btn-h2h-reload").onclick = loadMyH2H;
+async function loadMyH2H() {
+  const area = $("#my-h2h");
+  area.innerHTML = `<p class="empty-msg">불러오는 중…</p>`;
+  try {
+    const [q1, q2] = await Promise.all([
+      getDocs(query(collection(db, "records"), where("uidLow", "==", me.uid))),
+      getDocs(query(collection(db, "records"), where("uidHigh", "==", me.uid)))
+    ]);
+    const rows = [];
+    [...q1.docs, ...q2.docs].forEach(d => {
+      const r = d.data();
+      if (!r.totalGames) return;
+      const iAmLow = r.uidLow === me.uid;
+      const opp = iAmLow ? r.uidHigh : r.uidLow;
+      const w = iAmLow ? r.winsLow : r.winsHigh;
+      const l = iAmLow ? r.winsHigh : r.winsLow;
+      rows.push({ key: d.id, opp, w, l, g: r.totalGames });
+    });
+    if (!rows.length) {
+      area.innerHTML = `<p class="empty-msg">아직 상대 전적이 없습니다.<br>경기를 하면 자동으로 쌓입니다. 🏸</p>`;
+      return;
+    }
+    rows.sort((a, b) => b.g - a.g || b.w - a.w);
+    const totW = rows.reduce((s, r) => s + r.w, 0), totL = rows.reduce((s, r) => s + r.l, 0);
+    area.innerHTML = `<div class="card" style="text-align:center;">
+        <b>${esc(myProfile.name)}</b> 상대 전적 합계 —
+        <span class="num"><b>${totW + totL}전</b> <span style="color:var(--win); font-weight:800;">${totW}승</span> <span style="color:var(--loss); font-weight:800;">${totL}패</span></span>
+      </div>` +
+      rows.map(r => {
+        const wr = Math.round(r.w / r.g * 100);
+        return `<details class="card h2h-row" data-key="${r.key}" style="padding:0; overflow:hidden;">
+          <summary style="display:flex; align-items:center; padding:12px 14px; cursor:pointer; gap:8px;">
+            <b style="flex:1;">vs ${esc(uname(r.opp))}</b>
+            <span class="num">${r.g}전 <span style="color:var(--win); font-weight:800;">${r.w}승</span> <span style="color:var(--loss); font-weight:800;">${r.l}패</span></span>
+            <span class="num" style="color:var(--muted); width:42px; text-align:right;">${wr}%</span>
+          </summary>
+          <div class="h2h-detail" style="padding:0 14px 12px;"><p class="empty-msg" style="padding:6px 0;">불러오는 중…</p></div>
+        </details>`;
+      }).join("");
+    area.querySelectorAll("details.h2h-row").forEach(d => {
+      d.addEventListener("toggle", () => {
+        if (d.open && !d.dataset.loaded) { d.dataset.loaded = "1"; loadMyH2HDetail(d); }
+      });
+    });
+  } catch (e) { console.error(e); area.innerHTML = `<p class="empty-msg">조회 실패: ${e.code || e}</p>`; }
+}
+async function loadMyH2HDetail(d) {
+  const box = d.querySelector(".h2h-detail");
+  try {
+    const qs = await getDocs(query(collection(db, "matches"), where("pairKeys", "array-contains", d.dataset.key)));
+    const games = qs.docs.map(x => x.data()).filter(m => m.status === "finished")
+      .sort((x, y) => (y.date || "").localeCompare(x.date || "")).slice(0, 8);
+    box.innerHTML = games.map(m => {
+      const meInA = m.teamA.includes(me.uid);
+      const won = (m.winnerTeam === "A") === meInA;
+      const myTeam = meInA ? m.teamA : m.teamB, opTeam = meInA ? m.teamB : m.teamA;
+      const sc = (m.scoreA != null && m.scoreB != null) ? (meInA ? `${m.scoreA}:${m.scoreB}` : `${m.scoreB}:${m.scoreA}`) : "";
+      return `<div class="row" style="padding:7px 0; border-top:1px solid var(--edge); font-size:13px;">
+        <span class="grow">${m.date?.slice(5) || ""} · ${TYPE_LABEL[m.type]} · ${myTeam.map(uname).map(esc).join("·")} vs ${opTeam.map(uname).map(esc).join("·")}</span>
+        <b class="num" style="color:${won ? "var(--win)" : "var(--loss)"};">${sc} ${won ? "승" : "패"}</b></div>`;
+    }).join("") || `<p class="empty-msg" style="padding:6px 0;">경기 내역이 없습니다.</p>`;
+  } catch (e) { console.error(e); box.innerHTML = `<p class="empty-msg" style="padding:6px 0;">조회 실패</p>`; }
+}
 async function loadH2H() {
   const a = $("#h2h-a").value, b = $("#h2h-b").value;
   if (!a || !b || a === b) { $("#h2h-area").innerHTML = `<p class="empty-msg">서로 다른 두 선수를 선택하세요.</p>`; return; }
@@ -1052,7 +1160,7 @@ async function rollbackResult(matchId) {
     toast("결과를 취소하고 전적을 되돌렸습니다.");
   } catch (e) { console.error(e); toast("취소 실패: " + (e.message || e.code || e)); }
 }
-/* 튜토리얼용 더미 회원 */
+/* 튜토리얼용 더미 회원 (20명) */
 const DUMMIES = [
   { name: "김민준", gender: "M", grade: "A", birthYear: 1988 },
   { name: "이서연", gender: "F", grade: "B", birthYear: 1992 },
@@ -1060,6 +1168,20 @@ const DUMMIES = [
   { name: "최수아", gender: "F", grade: "C", birthYear: 1990 },
   { name: "정우진", gender: "M", grade: "D", birthYear: 1985 },
   { name: "한예은", gender: "F", grade: "초심", birthYear: 1998 },
+  { name: "오세훈", gender: "M", grade: "B", birthYear: 1983 },
+  { name: "배지현", gender: "F", grade: "A", birthYear: 1991 },
+  { name: "임도현", gender: "M", grade: "C", birthYear: 1979 },
+  { name: "송하늘", gender: "F", grade: "D", birthYear: 1996 },
+  { name: "강태오", gender: "M", grade: "A", birthYear: 1993 },
+  { name: "윤소민", gender: "F", grade: "B", birthYear: 1987 },
+  { name: "조민재", gender: "M", grade: "D", birthYear: 1999 },
+  { name: "신유나", gender: "F", grade: "C", birthYear: 1994 },
+  { name: "문건우", gender: "M", grade: "초심", birthYear: 2000 },
+  { name: "홍다은", gender: "F", grade: "초심", birthYear: 1997 },
+  { name: "서준호", gender: "M", grade: "B", birthYear: 1981 },
+  { name: "남가영", gender: "F", grade: "A", birthYear: 1989 },
+  { name: "최동혁", gender: "M", grade: "C", birthYear: 1992 },
+  { name: "유채원", gender: "F", grade: "D", birthYear: 1995 },
 ];
 $("#btn-dummy-add").onclick = async () => {
   try {
@@ -1070,7 +1192,7 @@ $("#btn-dummy-add").onclick = async () => {
         fcmTokens: [], joinedAt: serverTimestamp(), lastActiveAt: serverTimestamp()
       });
     }
-    toast("더미 회원 6명을 추가했습니다. 코트 탭에서 연습해 보세요! 🏸");
+    toast(`더미 회원 ${DUMMIES.length}명을 추가했습니다. 코트 탭에서 연습해 보세요! 🏸`);
   } catch (e) { toast("추가 실패: " + e.code); }
 };
 $("#btn-dummy-del").onclick = async () => {
@@ -1081,8 +1203,8 @@ $("#btn-dummy-del").onclick = async () => {
   try {
     const ids = new Set(dummies.map(d => d.id));
     await mutatePlacement((cs, groups) => {
-      cs.forEach(c => { if (c.status !== "playing") c.players = c.players.filter(x => !ids.has(x)); });
-      groups.forEach((g, i) => groups[i] = g.filter(x => !ids.has(x)));
+      cs.forEach(c => { if (c.status !== "playing") { c.a = c.a.filter(x => !ids.has(x)); c.b = c.b.filter(x => !ids.has(x)); } });
+      groups.forEach(g => { g.a = g.a.filter(x => !ids.has(x)); g.b = g.b.filter(x => !ids.has(x)); });
     });
     for (const d of dummies) await deleteDoc(doc(db, "users", d.id));
     toast("더미 회원을 모두 삭제했습니다.");
@@ -1092,8 +1214,8 @@ $("#btn-reset-courts").onclick = async () => {
   if (!confirm("모든 코트와 대기칸을 비울까요? (경기 중인 코트 제외)")) return;
   try {
     await mutatePlacement((cs, groups) => {
-      cs.forEach(c => { if (c.status !== "playing") c.players = []; });
-      groups.forEach((g, i) => groups[i] = []);
+      cs.forEach(c => { if (c.status !== "playing") { c.a = []; c.b = []; } });
+      groups.forEach(g => { g.a = []; g.b = []; });
     });
     toast("정리했습니다.");
   } catch (e) { toast(e.message || e.code); }
@@ -1131,6 +1253,7 @@ $$("#tabbar button").forEach(b => b.onclick = () => {
   $("#tab-" + b.dataset.tab).classList.remove("hidden");
   if (b.dataset.tab === "chat") { b.querySelector(".dot")?.remove(); const box = $("#chat-list"); box.scrollTop = box.scrollHeight; }
   if (b.dataset.tab === "daily" && $("#daily-area").querySelector(".empty-msg")) loadDaily();
+  if (b.dataset.tab === "h2h" && !$("#my-h2h").innerHTML) loadMyH2H();
 });
 </script>
 </body>

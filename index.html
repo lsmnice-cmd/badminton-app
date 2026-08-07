@@ -775,24 +775,26 @@ async function rsvp(id, kind) {
   catch (e) { toast("실패: " + e.code); }
 }
 $("#btn-session-add").onclick = () => {
+  const in4w = fmtDate(new Date(Date.now() + 27 * 86400000));
   openModal(`<h3>운동 일정 만들기</h3>
-    <label class="mlab">날짜 (반복 선택 시 시작 날짜)</label><input type="date" id="ss-date" value="${fmtDate()}">
+    <label class="mlab">시작일 (달력에서 선택)</label><input type="date" id="ss-date" value="${fmtDate()}">
     <label class="mlab">시간</label>
     <div class="row"><input type="time" id="ss-start" value="18:30"><span style="font-weight:800;">~</span><input type="time" id="ss-end" value="21:10"></div>
     <label class="mlab">장소</label><input id="ss-place" placeholder="예: 석수초 예술관 2층" maxlength="40">
-    <label class="mlab">반복 요일 (선택 — 누르면 여러 주 치를 한 번에 만듭니다)</label>
+    <label class="mlab">반복 요일 (선택 — 누르면 기간 안의 해당 요일마다 일정을 만듭니다)</label>
     <div class="seg" id="ss-days">
       <button data-d="1">월</button><button data-d="2">화</button><button data-d="3">수</button><button data-d="4">목</button><button data-d="5">금</button><button data-d="6">토</button><button data-d="0">일</button>
     </div>
-    <div class="row" style="margin-top:8px;">
-      <span class="mlab" style="margin:0;">기간</span>
-      <select id="ss-weeks" style="flex:1;"><option value="2">2주</option><option value="4" selected>4주</option><option value="8">8주</option><option value="12">12주</option></select>
+    <div id="ss-until-row" class="hidden">
+      <label class="mlab">반복 종료일 (달력에서 선택 — 이 날짜까지 만듭니다)</label>
+      <input type="date" id="ss-until" value="${in4w}">
     </div>
     <div class="actions"><button class="btn-warn" id="md-close">닫기</button><button class="btn-solid" id="ss-save">등록</button></div>`);
-  $("#ss-days").querySelectorAll("button").forEach(b => b.onclick = () => b.classList.toggle("on"));
+  const syncUntil = () => $("#ss-until-row").classList.toggle("hidden", !$("#ss-days").querySelector("button.on"));
+  $("#ss-days").querySelectorAll("button").forEach(b => b.onclick = () => { b.classList.toggle("on"); syncUntil(); });
   $("#ss-save").onclick = async () => {
     const start = $("#ss-date").value;
-    if (!start) { toast("날짜를 선택하세요."); return; }
+    if (!start) { toast("시작일을 선택하세요."); return; }
     const base = {
       startTime: $("#ss-start").value, endTime: $("#ss-end").value,
       place: $("#ss-place").value.trim(), attend: [], absent: [],
@@ -805,11 +807,15 @@ $("#btn-session-add").onclick = () => {
         await addDoc(collection(db, "sessions"), { date: start, ...base });
         toast("일정 1건을 등록했습니다.");
       } else {
-        const weeks = +$("#ss-weeks").value;
-        const s0 = new Date(start + "T00:00:00");
+        const until = $("#ss-until").value;
+        if (!until) { toast("반복 종료일을 달력에서 선택하세요."); $("#ss-save").disabled = false; return; }
+        if (until < start) { toast("종료일이 시작일보다 빠릅니다."); $("#ss-save").disabled = false; return; }
+        const s0 = new Date(start + "T00:00:00"), e0 = new Date(until + "T00:00:00");
+        const totalDays = Math.round((e0 - s0) / 86400000) + 1;
+        if (totalDays > 120) { toast("기간이 너무 깁니다. 4개월 이내로 선택해 주세요."); $("#ss-save").disabled = false; return; }
         const exist = new Set(sessions.map(x => x.date + "|" + (x.startTime || "")));
         const dates = [];
-        for (let i = 0; i < weeks * 7; i++) {
+        for (let i = 0; i < totalDays; i++) {
           const d = new Date(s0.getTime() + i * 86400000);
           if (days.includes(d.getDay()) && !exist.has(fmtDate(d) + "|" + base.startTime)) dates.push(fmtDate(d));
         }
@@ -817,7 +823,7 @@ $("#btn-session-add").onclick = () => {
         const batch = writeBatch(db);
         dates.forEach(dt => batch.set(doc(collection(db, "sessions")), { date: dt, ...base }));
         await batch.commit();
-        toast(`반복 일정 ${dates.length}건을 등록했습니다. 📅`);
+        toast(`${start.slice(5).replace("-", "/")}~${until.slice(5).replace("-", "/")} 반복 일정 ${dates.length}건을 등록했습니다. 📅`);
       }
       closeModal();
     } catch (e) { toast("등록 실패: " + e.code); $("#ss-save").disabled = false; }

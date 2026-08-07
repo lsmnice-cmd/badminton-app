@@ -160,6 +160,18 @@ window.TELEGRAM_CONFIG = {
   details.opp summary{cursor:pointer;}
   .opp-lines{padding:8px 12px; background:#F6F8F5; font-size:13px; text-align:left; line-height:1.9;}
 
+  /* ── 홈(공지·일정) / 접속 표시등 ── */
+  .st{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; flex:none;}
+  .st.on{background:#2ECC71;} .st.off{background:#E74C3C;}
+  .onbar{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
+  .onchip{background:#fff; border:1px solid var(--edge); border-radius:16px; padding:4px 10px; font-size:12.5px; font-weight:700; display:inline-flex; align-items:center;}
+  .notice.pinned{border-color:var(--accent); background:#FFFDF2;}
+  .satt,.sabs{flex:1; padding:10px; border-radius:10px; font-size:14px; background:#fff; border:1.5px solid var(--edge); color:var(--muted);}
+  .satt.on{background:var(--win); border-color:var(--win); color:#fff;}
+  .sabs.on{background:var(--loss); border-color:var(--loss); color:#fff;}
+  .mlab{display:block; font-size:12px; font-weight:700; color:var(--muted); margin:10px 0 4px;}
+  .modal textarea{width:100%; font-family:inherit; font-size:14px; padding:10px 12px; border:1.5px solid var(--edge); border-radius:10px; resize:vertical;}
+
   /* ── 탭바 ── */
   #tabbar{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:520px; background:#fff; border-top:1px solid var(--edge); display:flex; z-index:30; padding-bottom:env(safe-area-inset-bottom);}
   #tabbar button{flex:1; background:none; padding:9px 0 7px; font-size:10.5px; color:var(--muted); font-weight:700; display:flex; flex-direction:column; gap:2px; align-items:center; border-radius:0; position:relative;}
@@ -228,22 +240,36 @@ window.TELEGRAM_CONFIG = {
   </header>
   <div id="my-banner" class="hidden"></div>
   <main>
+    <!-- 홈 (공지 · 일정) -->
+    <section id="tab-home" class="tab">
+      <h2>공지사항 <button class="btn-line right hidden" id="btn-notice-add" style="padding:6px 12px; font-size:12px;">공지 쓰기</button></h2>
+      <div id="notice-area"><p class="empty-msg">공지사항이 없습니다.</p></div>
+
+      <h2>대회 일정 <button class="btn-line right hidden" id="btn-tour-add" style="padding:6px 12px; font-size:12px;">대회 등록</button></h2>
+      <div id="tour-area"><p class="empty-msg">예정된 대회가 없습니다.</p></div>
+
+      <h2>운동 일정 · 참석체크 <button class="btn-line right hidden" id="btn-session-add" style="padding:6px 12px; font-size:12px;">일정 만들기</button></h2>
+      <div id="session-area"><p class="empty-msg">예정된 운동 일정이 없습니다.</p></div>
+      <p class="hint">참석을 누른 회원은 코트 탭의 선수 목록에 나타납니다. 🟢 접속 중 · 🔴 미접속</p>
+    </section>
+
     <!-- 코트 -->
-    <section id="tab-courts" class="tab">
+    <section id="tab-courts" class="tab hidden">
       <h2>코트 현황 <span class="cnt" id="court-cnt"></span></h2>
       <div class="courts" id="court-board"></div>
 
       <h2>경기 대기 <span class="cnt">A/B팀을 미리 짜두면 입장 시 그대로 반영됩니다</span></h2>
       <div class="queue" id="queue-area"></div>
 
-      <h2>접속 중 <span class="cnt" id="online-cnt"></span></h2>
+      <h2>오늘의 선수 <span class="cnt" id="online-cnt"></span></h2>
       <div class="pchips" id="online-area"></div>
-      <p class="hint">이름표를 <b>코트의 위(A팀)/아래(B팀) 또는 대기칸의 A팀/B팀 줄에 끌어다 놓으면</b> 팀이 정해집니다. 이름표를 한 번 누른 뒤 원하는 자리를 눌러도 됩니다. 경기가 끝나면 <b>1순위 대기팀이 미리 짜둔 팀 그대로 자동 입장</b>하고 알림·진동이 갑니다.</p>
+      <p class="hint">🟢 접속 중 · 🔴 미접속 — 홈 탭 일정에 「참석」을 누른 회원과 접속 중인 회원이 여기 나타납니다. 이름표를 <b>코트의 위(A팀)/아래(B팀) 또는 대기칸의 A팀/B팀 줄에 끌어다 놓으면</b> 팀이 정해집니다. 이름표를 한 번 누른 뒤 원하는 자리를 눌러도 됩니다. 경기가 끝나면 <b>1순위 대기팀이 미리 짜둔 팀 그대로 자동 입장</b>하고 알림·진동이 갑니다.</p>
     </section>
 
     <!-- 채팅 -->
     <section id="tab-chat" class="tab hidden">
-      <h2>동호회 채팅 <span class="cnt" id="chat-online"></span></h2>
+      <h2>동호회 채팅</h2>
+      <div class="onbar" id="chat-online"></div>
       <div id="chat-list"></div>
       <div class="chat-in">
         <input id="chat-input" maxlength="300" placeholder="메시지 입력…">
@@ -255,6 +281,9 @@ window.TELEGRAM_CONFIG = {
     <section id="tab-ranking" class="tab hidden">
       <h2>랭킹</h2>
       <div id="ranking-area"></div>
+      <h2>이달의 출석 👑 <input type="month" id="att-month" class="right" style="width:auto; padding:6px 10px; font-size:13px;"></h2>
+      <div id="attend-stats"><p class="empty-msg">집계 중…</p></div>
+      <p class="hint">홈 탭 일정에서 「참석」을 누른 기록으로 집계합니다. 지난 일정(오늘 포함)만 계산됩니다.</p>
     </section>
 
     <!-- 일별 기록 -->
@@ -303,7 +332,8 @@ window.TELEGRAM_CONFIG = {
   </main>
 
   <nav id="tabbar">
-    <button data-tab="courts" class="on"><span class="ico">🏟️</span>코트</button>
+    <button data-tab="home" class="on"><span class="ico">🏠</span>홈</button>
+    <button data-tab="courts"><span class="ico">🏟️</span>코트</button>
     <button data-tab="chat" id="tabbtn-chat"><span class="ico">💬</span>채팅</button>
     <button data-tab="ranking"><span class="ico">🏆</span>랭킹</button>
     <button data-tab="daily"><span class="ico">📅</span>기록</button>
@@ -320,7 +350,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit,
-  onSnapshot, getDocs, runTransaction, serverTimestamp, increment }
+  onSnapshot, getDocs, runTransaction, writeBatch, serverTimestamp, increment, arrayUnion, arrayRemove }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* 설정은 파일 맨 위 <head>의 window.FIREBASE_CONFIG / window.TELEGRAM_CONFIG 에서 읽어옵니다 */
@@ -375,6 +405,7 @@ let users = {};                 // uid → 회원
 let courts = {};                // n → {players, status, matchId}
 let queueGroups = [{ a: [], b: [] }, { a: [], b: [] }, { a: [], b: [] }, { a: [], b: [] }];
 let todayMatches = [];          // 오늘 생성된 경기 전부
+let notices = [], sessions = [], attendersToday = new Set(), tournaments = [];
 let chatMsgs = [];
 let unsubs = [], timers = [];
 let prevMyCourt = null, firstCourtSnap = true, firstChatSnap = true;
@@ -590,7 +621,29 @@ function startApp() {
     renderOnline(); renderCourts(); renderDone();
   }, e => console.error("matches:", e)));
 
-  // ⑤ 채팅 (최근 50개)
+  // ⑤ 공지사항
+  unsubs.push(onSnapshot(query(collection(db, "notices"), orderBy("createdAt", "desc"), limit(30)), (qs) => {
+    notices = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderNotices();
+  }, e => console.error("notices:", e)));
+
+  // ⑥ 운동 일정 (오늘 이후)
+  unsubs.push(onSnapshot(query(collection(db, "sessions"), where("date", ">=", fmtDate()), orderBy("date"), limit(20)), (qs) => {
+    sessions = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    attendersToday = new Set(sessions.filter(s => s.date === fmtDate()).flatMap(s => s.attend || []));
+    renderSessions(); renderOnline();
+  }, e => console.error("sessions:", e)));
+
+  // ⑥-2 대회 일정
+  unsubs.push(onSnapshot(query(collection(db, "tournaments"), orderBy("startDate"), limit(50)), (qs) => {
+    tournaments = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTournaments();
+  }, e => console.error("tournaments:", e)));
+
+  $("#att-month").value = fmtDate().slice(0, 7);
+  $("#att-month").onchange = loadAttendStats;
+
+  // ⑦ 채팅 (최근 50개)
   unsubs.push(onSnapshot(query(collection(db, "chat"), orderBy("createdAt", "desc"), limit(50)), (qs) => {
     chatMsgs = qs.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
     renderChat();
@@ -606,6 +659,10 @@ function renderHeader() {
   $("#me-chip").innerHTML =
     `<b>${esc(myProfile.name)}</b> ${tierChip(myProfile.ratingPoint)}<br><span class="num">${myProfile.ratingPoint}점 · ${myProfile.totalWins}승 ${myProfile.totalLosses}패</span>`;
   $("#tabbtn-admin").classList.toggle("hidden", !isAdmin());
+  $("#btn-notice-add").classList.toggle("hidden", !isAdmin());
+  $("#btn-session-add").classList.toggle("hidden", !isAdmin());
+  $("#btn-tour-add").classList.toggle("hidden", !isAdmin());
+  renderNotices(); renderSessions(); renderTournaments();
 }
 
 /* ── 알림 ── */
@@ -629,6 +686,217 @@ function renderBanner() {
   }
   b.classList.remove("hidden");
   b.textContent = mine.playing ? `🎯 ${mine.n}번 코트에서 경기 중` : `🏸 ${mine.n}번 코트 배정 — 코트로 이동하세요!`;
+}
+
+/* ═══════════ 홈: 공지사항 · 운동 일정 ═══════════ */
+function openModal(html) {
+  const r = $("#modal-root");
+  r.classList.remove("hidden");
+  r.innerHTML = `<div class="modal">${html}</div>`;
+  const c = $("#md-close"); if (c) c.onclick = closeModal;
+}
+function closeModal() { const r = $("#modal-root"); r.classList.add("hidden"); r.innerHTML = ""; }
+
+function renderNotices() {
+  if (!appStarted) return;
+  const area = $("#notice-area");
+  const list = notices.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  area.innerHTML = list.length ? list.map(n => {
+    const d = n.createdAt?.toDate?.();
+    const dt = d ? `${d.getMonth() + 1}/${d.getDate()}` : "";
+    return `<div class="card notice ${n.pinned ? "pinned" : ""}">
+      <div class="row"><b class="grow">${n.pinned ? "📌 " : ""}${esc(n.title)}</b><small style="color:var(--muted); flex:none;">${dt}</small>
+      ${isAdmin() ? `<button class="ghost" data-pin="${n.id}" style="padding:2px 6px;">${n.pinned ? "고정해제" : "고정"}</button><button class="ghost" data-ndel="${n.id}" style="color:var(--loss); padding:2px 6px;">삭제</button>` : ""}</div>
+      <div style="font-size:14px; line-height:1.65; margin-top:6px; white-space:pre-wrap;">${esc(n.text)}</div></div>`;
+  }).join("") : `<p class="empty-msg">공지사항이 없습니다.</p>`;
+  area.querySelectorAll("[data-ndel]").forEach(b => b.onclick = async () => {
+    if (!confirm("이 공지를 삭제할까요?")) return;
+    try { await deleteDoc(doc(db, "notices", b.dataset.ndel)); } catch (e) { toast("실패: " + e.code); }
+  });
+  area.querySelectorAll("[data-pin]").forEach(b => b.onclick = async () => {
+    const n = notices.find(x => x.id === b.dataset.pin);
+    try { await updateDoc(doc(db, "notices", b.dataset.pin), { pinned: !n?.pinned }); } catch (e) { toast("실패: " + e.code); }
+  });
+}
+$("#btn-notice-add").onclick = () => {
+  openModal(`<h3>공지 쓰기</h3>
+    <input id="nt-title" placeholder="제목" maxlength="60">
+    <textarea id="nt-text" rows="6" placeholder="내용 (대회 일정, 장소 변경 안내 등)" maxlength="2000" style="margin-top:8px;"></textarea>
+    <div class="actions"><button class="btn-warn" id="md-close">닫기</button><button class="btn-solid" id="nt-save">등록</button></div>`);
+  $("#nt-save").onclick = async () => {
+    const title = $("#nt-title").value.trim(), text = $("#nt-text").value.trim();
+    if (!title) { toast("제목을 입력하세요."); return; }
+    try {
+      await addDoc(collection(db, "notices"), { title, text, pinned: false, createdBy: me.uid, createdAt: serverTimestamp() });
+      closeModal(); toast("공지를 등록했습니다.");
+    } catch (e) { toast("등록 실패: " + e.code); }
+  };
+};
+
+function renderSessions() {
+  if (!appStarted) return;
+  const area = $("#session-area");
+  if (!sessions.length) { area.innerHTML = `<p class="empty-msg">예정된 운동 일정이 없습니다.</p>`; return; }
+  area.innerHTML = sessions.map(s => {
+    const at = s.attend || [], ab = s.absent || [];
+    const my = at.includes(me.uid) ? "attend" : (ab.includes(me.uid) ? "absent" : "");
+    const dt = new Date(s.date + "T00:00:00");
+    const wd = ["일", "월", "화", "수", "목", "금", "토"][dt.getDay()];
+    const isToday = s.date === fmtDate();
+    return `<div class="card" style="${isToday ? "border-color:var(--court); border-width:1.8px;" : ""}">
+      <div class="row"><b class="grow">${isToday ? "🔥 오늘 · " : ""}${s.date.slice(5).replace("-", "/")} (${wd}) ${esc(s.startTime || "")}${s.endTime ? ` ~ ${esc(s.endTime)}` : ""}</b>
+      ${isAdmin() ? `<button class="ghost" data-sdel="${s.id}" style="color:var(--loss); padding:2px 6px; flex:none;">삭제</button>` : ""}</div>
+      ${s.place ? `<div style="font-size:13px; color:var(--muted); margin-top:2px;">📍 ${esc(s.place)}</div>` : ""}
+      <div class="row" style="margin-top:10px;">
+        <button class="satt ${my === "attend" ? "on" : ""}" data-att="${s.id}">✅ 참석${my === "attend" ? " (완료)" : ""}</button>
+        <button class="sabs ${my === "absent" ? "on" : ""}" data-abs="${s.id}">불참</button>
+      </div>
+      <details style="margin-top:8px;">
+        <summary style="font-size:13px; color:var(--muted); cursor:pointer;">참석 <b style="color:var(--win);">${at.length}</b> · 불참 <b style="color:var(--loss);">${ab.length}</b> — 명단 보기</summary>
+        <div style="font-size:13px; line-height:1.8; margin-top:6px;">
+          <b style="color:var(--win);">참석:</b> ${at.length ? at.map(uname).map(esc).join(", ") : "—"}<br>
+          <b style="color:var(--loss);">불참:</b> ${ab.length ? ab.map(uname).map(esc).join(", ") : "—"}</div>
+      </details></div>`;
+  }).join("");
+  area.querySelectorAll("[data-att]").forEach(b => b.onclick = () => rsvp(b.dataset.att, "attend"));
+  area.querySelectorAll("[data-abs]").forEach(b => b.onclick = () => rsvp(b.dataset.abs, "absent"));
+  area.querySelectorAll("[data-sdel]").forEach(b => b.onclick = async () => {
+    if (!confirm("이 일정을 삭제할까요?")) return;
+    try { await deleteDoc(doc(db, "sessions", b.dataset.sdel)); } catch (e) { toast("실패: " + e.code); }
+  });
+}
+async function rsvp(id, kind) {
+  const s = sessions.find(x => x.id === id); if (!s) return;
+  const inAt = (s.attend || []).includes(me.uid), inAb = (s.absent || []).includes(me.uid);
+  const upd = { updatedAt: serverTimestamp() };
+  if (kind === "attend") { upd.attend = inAt ? arrayRemove(me.uid) : arrayUnion(me.uid); if (inAb) upd.absent = arrayRemove(me.uid); }
+  else { upd.absent = inAb ? arrayRemove(me.uid) : arrayUnion(me.uid); if (inAt) upd.attend = arrayRemove(me.uid); }
+  try { await updateDoc(doc(db, "sessions", id), upd); }
+  catch (e) { toast("실패: " + e.code); }
+}
+$("#btn-session-add").onclick = () => {
+  openModal(`<h3>운동 일정 만들기</h3>
+    <label class="mlab">날짜 (반복 선택 시 시작 날짜)</label><input type="date" id="ss-date" value="${fmtDate()}">
+    <label class="mlab">시간</label>
+    <div class="row"><input type="time" id="ss-start" value="18:30"><span style="font-weight:800;">~</span><input type="time" id="ss-end" value="21:10"></div>
+    <label class="mlab">장소</label><input id="ss-place" placeholder="예: 석수초 예술관 2층" maxlength="40">
+    <label class="mlab">반복 요일 (선택 — 누르면 여러 주 치를 한 번에 만듭니다)</label>
+    <div class="seg" id="ss-days">
+      <button data-d="1">월</button><button data-d="2">화</button><button data-d="3">수</button><button data-d="4">목</button><button data-d="5">금</button><button data-d="6">토</button><button data-d="0">일</button>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <span class="mlab" style="margin:0;">기간</span>
+      <select id="ss-weeks" style="flex:1;"><option value="2">2주</option><option value="4" selected>4주</option><option value="8">8주</option><option value="12">12주</option></select>
+    </div>
+    <div class="actions"><button class="btn-warn" id="md-close">닫기</button><button class="btn-solid" id="ss-save">등록</button></div>`);
+  $("#ss-days").querySelectorAll("button").forEach(b => b.onclick = () => b.classList.toggle("on"));
+  $("#ss-save").onclick = async () => {
+    const start = $("#ss-date").value;
+    if (!start) { toast("날짜를 선택하세요."); return; }
+    const base = {
+      startTime: $("#ss-start").value, endTime: $("#ss-end").value,
+      place: $("#ss-place").value.trim(), attend: [], absent: [],
+      createdBy: me.uid, createdAt: serverTimestamp()
+    };
+    const days = [...$("#ss-days").querySelectorAll("button.on")].map(b => +b.dataset.d);
+    $("#ss-save").disabled = true;
+    try {
+      if (!days.length) {
+        await addDoc(collection(db, "sessions"), { date: start, ...base });
+        toast("일정 1건을 등록했습니다.");
+      } else {
+        const weeks = +$("#ss-weeks").value;
+        const s0 = new Date(start + "T00:00:00");
+        const exist = new Set(sessions.map(x => x.date + "|" + (x.startTime || "")));
+        const dates = [];
+        for (let i = 0; i < weeks * 7; i++) {
+          const d = new Date(s0.getTime() + i * 86400000);
+          if (days.includes(d.getDay()) && !exist.has(fmtDate(d) + "|" + base.startTime)) dates.push(fmtDate(d));
+        }
+        if (!dates.length) { toast("만들 새 일정이 없습니다. (이미 등록됨)"); $("#ss-save").disabled = false; return; }
+        const batch = writeBatch(db);
+        dates.forEach(dt => batch.set(doc(collection(db, "sessions")), { date: dt, ...base }));
+        await batch.commit();
+        toast(`반복 일정 ${dates.length}건을 등록했습니다. 📅`);
+      }
+      closeModal();
+    } catch (e) { toast("등록 실패: " + e.code); $("#ss-save").disabled = false; }
+  };
+};
+
+/* ── 대회 일정 ── */
+function renderTournaments() {
+  if (!appStarted) return;
+  const today = fmtDate();
+  const wd = d => ["일", "월", "화", "수", "목", "금", "토"][new Date(d + "T00:00:00").getDay()];
+  const list = tournaments.filter(t => (t.endDate || t.startDate) >= today);
+  const area = $("#tour-area");
+  area.innerHTML = list.length ? list.map(t => {
+    const dd = Math.round((new Date(t.startDate + "T00:00:00") - new Date(today + "T00:00:00")) / 86400000);
+    const badge = dd > 0 ? `D-${dd}` : (today <= (t.endDate || t.startDate) ? "진행중" : "종료");
+    const bcolor = dd <= 0 ? "var(--playing)" : (dd <= 7 ? "var(--loss)" : "var(--court)");
+    const period = `${t.startDate.slice(5).replace("-", "/")}(${wd(t.startDate)})` +
+      (t.endDate && t.endDate !== t.startDate ? ` ~ ${t.endDate.slice(5).replace("-", "/")}(${wd(t.endDate)})` : "");
+    return `<div class="card"><div class="row">
+      <span class="tier" style="background:${bcolor}; flex:none;">${badge}</span>
+      <div class="grow"><b>${esc(t.name)}</b><br>
+        <small style="color:var(--muted);">${period}${t.place ? " · " + esc(t.place) : ""}${t.note ? "<br>" + esc(t.note) : ""}</small></div>
+      ${isAdmin() ? `<button class="ghost" data-tdel="${t.id}" style="color:var(--loss); flex:none; padding:2px 6px;">삭제</button>` : ""}
+    </div></div>`;
+  }).join("") : `<p class="empty-msg">예정된 대회가 없습니다.</p>`;
+  area.querySelectorAll("[data-tdel]").forEach(b => b.onclick = async () => {
+    if (!confirm("이 대회를 삭제할까요?")) return;
+    try { await deleteDoc(doc(db, "tournaments", b.dataset.tdel)); } catch (e) { toast("실패: " + e.code); }
+  });
+}
+$("#btn-tour-add").onclick = () => {
+  openModal(`<h3>대회 등록</h3>
+    <label class="mlab">대회명</label><input id="tr-name" placeholder="예: 제32회 안양시장기 배드민턴대회" maxlength="60">
+    <label class="mlab">시작일</label><input type="date" id="tr-start">
+    <label class="mlab">종료일 (하루짜리면 비워두세요)</label><input type="date" id="tr-end">
+    <label class="mlab">장소</label><input id="tr-place" placeholder="예: 호계체육관" maxlength="40">
+    <label class="mlab">비고</label><input id="tr-note" placeholder="예: 개회식 (토) 11시" maxlength="80">
+    <div class="actions"><button class="btn-warn" id="md-close">닫기</button><button class="btn-solid" id="tr-save">등록</button></div>`);
+  $("#tr-save").onclick = async () => {
+    const name = $("#tr-name").value.trim(), startDate = $("#tr-start").value;
+    if (!name || !startDate) { toast("대회명과 시작일을 입력하세요."); return; }
+    try {
+      await addDoc(collection(db, "tournaments"), {
+        name, startDate, endDate: $("#tr-end").value || null,
+        place: $("#tr-place").value.trim(), note: $("#tr-note").value.trim(),
+        createdBy: me.uid, createdAt: serverTimestamp()
+      });
+      closeModal(); toast("대회를 등록했습니다. 🏆");
+    } catch (e) { toast("등록 실패: " + e.code); }
+  };
+};
+
+/* ── 월간 출석 통계 ── */
+async function loadAttendStats() {
+  const mv = $("#att-month").value; if (!mv) return;
+  const [y, m] = mv.split("-").map(Number);
+  const first = `${mv}-01`, last = `${mv}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+  $("#attend-stats").innerHTML = `<p class="empty-msg">집계 중…</p>`;
+  try {
+    const qs = await getDocs(query(collection(db, "sessions"), where("date", ">=", first), where("date", "<=", last)));
+    const ss = qs.docs.map(d => d.data()).filter(s => s.date <= fmtDate());
+    if (!ss.length) { $("#attend-stats").innerHTML = `<p class="empty-msg">${m}월의 지난 일정 기록이 없습니다.</p>`; return; }
+    const cnt = {};
+    ss.forEach(s => (s.attend || []).forEach(u => cnt[u] = (cnt[u] || 0) + 1));
+    const rows = Object.entries(cnt).filter(([u]) => users[u]).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    if (!rows.length) { $("#attend-stats").innerHTML = `<p class="empty-msg">참석 기록이 없습니다.</p>`; return; }
+    const total = ss.length;
+    $("#attend-stats").innerHTML =
+      `<p class="hint" style="margin-bottom:6px;">${m}월 운동 ${total}회 기준 · 상위 15명</p>
+       <div class="card" style="padding:0; overflow:hidden;">` +
+      rows.map(([u, c], i) => `
+        <div class="row" style="padding:10px 12px; ${i ? "border-top:1px solid var(--edge);" : ""} ${u === me.uid ? "background:#FFF7DF;" : ""}">
+          <span style="width:32px; text-align:center; font-weight:800;">${i === 0 ? "👑" : i + 1}</span>
+          <b class="grow">${esc(uname(u))}</b>
+          <span class="num">${c}회</span>
+          <span class="num" style="width:52px; text-align:right; color:var(--muted);">${Math.round(c / total * 100)}%</span>
+        </div>`).join("") + `</div>`;
+  } catch (e) { console.error(e); $("#attend-stats").innerHTML = `<p class="empty-msg">집계 실패: ${e.code || e}</p>`; }
 }
 
 /* ═══════════ 코트 / 대기 / 접속자 ═══════════ */
@@ -703,19 +971,26 @@ function zoneClick(e) {
 }
 function renderOnline() {
   if (!appStarted) return;
-  const list = Object.values(users).filter(u => ["member", "admin"].includes(u.role) && isOnline(u))
-    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  $("#online-cnt").textContent = `${list.length}명`;
-  $("#chat-online").textContent = `접속 ${list.length}명 — ${list.map(u => u.name).join(", ").slice(0, 60)}`;
-  $("#online-area").innerHTML = list.length ? list.map(u => {
+  const members = Object.values(users).filter(u => ["member", "admin"].includes(u.role));
+  const onlineList = members.filter(isOnline).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  // 코트 탭 선수 목록 = 오늘 참석자 ∪ 현재 접속자
+  const pool = members.filter(u => isOnline(u) || attendersToday.has(u.id))
+    .sort((a, b) => (isOnline(b) ? 1 : 0) - (isOnline(a) ? 1 : 0) || a.name.localeCompare(b.name, "ko"));
+  $("#online-cnt").textContent = `접속 ${onlineList.length} · 오늘 참석 ${attendersToday.size}`;
+  // 채팅 탭 접속자 칩
+  $("#chat-online").innerHTML = onlineList.length
+    ? onlineList.map(u => `<span class="onchip"><i class="st on"></i>${esc(u.name)}</span>`).join("")
+    : `<span style="color:var(--muted); font-size:12px;">접속 중인 회원이 없습니다.</span>`;
+  $("#online-area").innerHTML = pool.length ? pool.map(u => {
     const loc = whereIs(u.id);
     const locTxt = loc ? (loc.kind === "court" ? `${loc.n}코트${loc.playing ? " 경기중" : ""}` : `대기${loc.n}`) : "";
     const by = u.birthYear ? `${String(u.birthYear).slice(2)}년생` : "";
+    const on = isOnline(u);
     return `<button class="pchip ${selUid === u.id ? "sel" : ""} ${loc?.playing ? "busy" : ""}" data-uid="${u.id}">
-      <b>${esc(u.name)}</b>
+      <b><i class="st ${on ? "on" : "off"}"></i>${esc(u.name)}</b>
       <small>${by}${by ? " · " : ""}${gradeTxt(u)} · 오늘 ${todayCount(u.id)}판</small>
       ${locTxt ? `<span class="loc"> ${locTxt}</span>` : ""}</button>`;
-  }).join("") : `<p class="empty-msg" style="width:100%;">접속 중인 회원이 없습니다.</p>`;
+  }).join("") : `<p class="empty-msg" style="width:100%;">오늘 참석자나 접속 중인 회원이 없습니다.<br>홈 탭에서 일정에 참석을 눌러주세요.</p>`;
 }
 function clearSel() { selUid = null; renderOnline(); }
 
@@ -1287,6 +1562,7 @@ $$("#tabbar button").forEach(b => b.onclick = () => {
   $$(".tab").forEach(t => t.classList.add("hidden"));
   $("#tab-" + b.dataset.tab).classList.remove("hidden");
   if (b.dataset.tab === "chat") { b.querySelector(".dot")?.remove(); const box = $("#chat-list"); box.scrollTop = box.scrollHeight; }
+  if (b.dataset.tab === "ranking") loadAttendStats();
   if (b.dataset.tab === "daily" && $("#daily-area").querySelector(".empty-msg")) loadDaily();
   if (b.dataset.tab === "h2h" && !$("#my-h2h").innerHTML) loadMyH2H();
 });

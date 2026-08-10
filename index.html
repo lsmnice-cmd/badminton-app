@@ -263,7 +263,7 @@ window.TELEGRAM_CONFIG = {
 
       <h2>오늘의 선수 <span class="cnt" id="online-cnt"></span></h2>
       <div class="pchips" id="online-area"></div>
-      <p class="hint">🟢 접속 중 · 🔴 미접속 — 홈 탭 일정에 「참석」을 누른 회원과 접속 중인 회원이 여기 나타납니다. 이름표를 <b>코트의 위(A팀)/아래(B팀) 또는 대기칸의 A팀/B팀 줄에 끌어다 놓으면</b> 팀이 정해집니다. 이름표를 한 번 누른 뒤 원하는 자리를 눌러도 됩니다. 경기가 끝나면 <b>1순위 대기팀이 미리 짜둔 팀 그대로 자동 입장</b>하고 알림·진동이 갑니다.</p>
+      <p class="hint">홈 탭 오늘 일정에 「참석」을 누른 회원이 여기 나타납니다 — 🟢 앱 접속 중 · 🔴 참석만 누르고 미접속. 이름표를 <b>코트의 위(A팀)/아래(B팀) 또는 대기칸의 A팀/B팀 줄에 끌어다 놓으면</b> 팀이 정해집니다. 이름표를 한 번 누른 뒤 원하는 자리를 눌러도 됩니다. 경기가 끝나면 <b>1순위 대기팀이 미리 짜둔 팀 그대로 자동 입장</b>하고 알림·진동이 갑니다.</p>
     </section>
 
     <!-- 채팅 -->
@@ -737,41 +737,39 @@ function renderSessions() {
   if (!appStarted) return;
   const area = $("#session-area");
   if (!sessions.length) { area.innerHTML = `<p class="empty-msg">예정된 운동 일정이 없습니다.</p>`; return; }
+  const members = Object.values(users).filter(u => ["member", "admin"].includes(u.role) && !u.dummy);
   area.innerHTML = sessions.map(s => {
-    const at = s.attend || [], ab = s.absent || [];
-    const my = at.includes(me.uid) ? "attend" : (ab.includes(me.uid) ? "absent" : "");
+    const at = s.attend || [];
+    const my = at.includes(me.uid);
     const dt = new Date(s.date + "T00:00:00");
     const wd = ["일", "월", "화", "수", "목", "금", "토"][dt.getDay()];
     const isToday = s.date === fmtDate();
+    const absentees = members.filter(u => !at.includes(u.id));
     return `<div class="card" style="${isToday ? "border-color:var(--court); border-width:1.8px;" : ""}">
       <div class="row"><b class="grow">${isToday ? "🔥 오늘 · " : ""}${s.date.slice(5).replace("-", "/")} (${wd}) ${esc(s.startTime || "")}${s.endTime ? ` ~ ${esc(s.endTime)}` : ""}</b>
       ${isAdmin() ? `<button class="ghost" data-sdel="${s.id}" style="color:var(--loss); padding:2px 6px; flex:none;">삭제</button>` : ""}</div>
       ${s.place ? `<div style="font-size:13px; color:var(--muted); margin-top:2px;">📍 ${esc(s.place)}</div>` : ""}
       <div class="row" style="margin-top:10px;">
-        <button class="satt ${my === "attend" ? "on" : ""}" data-att="${s.id}">✅ 참석${my === "attend" ? " (완료)" : ""}</button>
-        <button class="sabs ${my === "absent" ? "on" : ""}" data-abs="${s.id}">불참</button>
+        <button class="satt ${my ? "on" : ""}" data-att="${s.id}">✅ 참석${my ? " 완료 (다시 누르면 취소)" : ""}</button>
       </div>
-      <details style="margin-top:8px;">
-        <summary style="font-size:13px; color:var(--muted); cursor:pointer;">참석 <b style="color:var(--win);">${at.length}</b> · 불참 <b style="color:var(--loss);">${ab.length}</b> — 명단 보기</summary>
-        <div style="font-size:13px; line-height:1.8; margin-top:6px;">
-          <b style="color:var(--win);">참석:</b> ${at.length ? at.map(uname).map(esc).join(", ") : "—"}<br>
-          <b style="color:var(--loss);">불참:</b> ${ab.length ? ab.map(uname).map(esc).join(", ") : "—"}</div>
+      <div style="font-size:13px; line-height:1.8; margin-top:8px;">
+        <b style="color:var(--win);">참석 ${at.length}</b> — ${at.length ? at.map(uname).map(esc).join(", ") : "아직 없습니다. 첫 번째로 참석을 눌러보세요!"}
+      </div>
+      <details style="margin-top:4px;">
+        <summary style="font-size:13px; color:var(--muted); cursor:pointer;">불참 ${absentees.length} — 명단 보기</summary>
+        <div style="font-size:13px; line-height:1.8; margin-top:4px; color:var(--muted);">${absentees.length ? absentees.map(u => esc(u.name)).join(", ") : "—"}</div>
       </details></div>`;
   }).join("");
-  area.querySelectorAll("[data-att]").forEach(b => b.onclick = () => rsvp(b.dataset.att, "attend"));
-  area.querySelectorAll("[data-abs]").forEach(b => b.onclick = () => rsvp(b.dataset.abs, "absent"));
+  area.querySelectorAll("[data-att]").forEach(b => b.onclick = () => rsvp(b.dataset.att));
   area.querySelectorAll("[data-sdel]").forEach(b => b.onclick = async () => {
     if (!confirm("이 일정을 삭제할까요?")) return;
     try { await deleteDoc(doc(db, "sessions", b.dataset.sdel)); } catch (e) { toast("실패: " + e.code); }
   });
 }
-async function rsvp(id, kind) {
+async function rsvp(id) {
   const s = sessions.find(x => x.id === id); if (!s) return;
-  const inAt = (s.attend || []).includes(me.uid), inAb = (s.absent || []).includes(me.uid);
-  const upd = { updatedAt: serverTimestamp() };
-  if (kind === "attend") { upd.attend = inAt ? arrayRemove(me.uid) : arrayUnion(me.uid); if (inAb) upd.absent = arrayRemove(me.uid); }
-  else { upd.absent = inAb ? arrayRemove(me.uid) : arrayUnion(me.uid); if (inAt) upd.attend = arrayRemove(me.uid); }
-  try { await updateDoc(doc(db, "sessions", id), upd); }
+  const inAt = (s.attend || []).includes(me.uid);
+  try { await updateDoc(doc(db, "sessions", id), { attend: inAt ? arrayRemove(me.uid) : arrayUnion(me.uid), updatedAt: serverTimestamp() }); }
   catch (e) { toast("실패: " + e.code); }
 }
 $("#btn-session-add").onclick = () => {
@@ -979,10 +977,10 @@ function renderOnline() {
   if (!appStarted) return;
   const members = Object.values(users).filter(u => ["member", "admin"].includes(u.role));
   const onlineList = members.filter(isOnline).sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  // 코트 탭 선수 목록 = 오늘 참석자 ∪ 현재 접속자
-  const pool = members.filter(u => isOnline(u) || attendersToday.has(u.id))
+  // 코트 탭 선수 목록 = 오늘 일정에 참석을 누른 회원 (+ 튜토리얼 더미)
+  const pool = members.filter(u => attendersToday.has(u.id) || u.dummy === true)
     .sort((a, b) => (isOnline(b) ? 1 : 0) - (isOnline(a) ? 1 : 0) || a.name.localeCompare(b.name, "ko"));
-  $("#online-cnt").textContent = `접속 ${onlineList.length} · 오늘 참석 ${attendersToday.size}`;
+  $("#online-cnt").textContent = `오늘 참석 ${attendersToday.size} · 접속 ${onlineList.length}`;
   // 채팅 탭 접속자 칩
   $("#chat-online").innerHTML = onlineList.length
     ? onlineList.map(u => `<span class="onchip"><i class="st on"></i>${esc(u.name)}</span>`).join("")
@@ -996,7 +994,7 @@ function renderOnline() {
       <b><i class="st ${on ? "on" : "off"}"></i>${esc(u.name)}</b>
       <small>${by}${by ? " · " : ""}${gradeTxt(u)} · 오늘 ${todayCount(u.id)}판</small>
       ${locTxt ? `<span class="loc"> ${locTxt}</span>` : ""}</button>`;
-  }).join("") : `<p class="empty-msg" style="width:100%;">오늘 참석자나 접속 중인 회원이 없습니다.<br>홈 탭에서 일정에 참석을 눌러주세요.</p>`;
+  }).join("") : `<p class="empty-msg" style="width:100%;">오늘 일정에 참석한 회원이 없습니다.<br>홈 탭에서 「참석」을 눌러주세요.</p>`;
 }
 function clearSel() { selUid = null; renderOnline(); }
 
